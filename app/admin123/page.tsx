@@ -12,6 +12,8 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [resetMessage, setResetMessage] = useState("");
   const [lockoutTime, setLockoutTime] = useState<number | null>(null);
 
   useEffect(() => {
@@ -44,6 +46,34 @@ export default function AdminLoginPage() {
     }
   }
 
+  async function handleForgotPassword() {
+    setErrorMessage("");
+    setResetMessage("");
+
+    const normalizedEmail = email.trim();
+    if (!normalizedEmail) {
+      setErrorMessage("Please enter your email address first.");
+      return;
+    }
+
+    setIsResettingPassword(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+        redirectTo: `${window.location.origin}/admin123/change-password`,
+      });
+
+      if (error) {
+        setErrorMessage(error.message || "Unable to send the password reset email.");
+        return;
+      }
+
+      setResetMessage("Password reset email sent. Please check your inbox.");
+    } catch {
+      setErrorMessage("Unable to send the password reset email. Please try again.");
+    } finally {
+      setIsResettingPassword(false);
+    }
+  }
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErrorMessage("");
@@ -161,6 +191,20 @@ export default function AdminLoginPage() {
             className="w-full rounded-lg border border-slate-300 p-3 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-gray-100"
           />
 
+          <div className="text-right">
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              disabled={isResettingPassword || isLoading}
+              className="text-sm font-medium text-blue-600 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isResettingPassword ? "Sending reset email..." : "Forgot password?"}
+            </button>
+          </div>
+
+          {resetMessage ? (
+            <p className="text-sm text-green-600">{resetMessage}</p>
+          ) : null}
           {errorMessage ? (
             <p className="text-sm text-red-600">{errorMessage}</p>
           ) : null}
