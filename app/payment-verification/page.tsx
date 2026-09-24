@@ -6,11 +6,13 @@ import {
   useMemo,
   useState,
 } from "react";
+import { receiptAllocation } from "@/lib/paymentObligations";
 import PaymentsNavigation from "@/components/payments/PaymentsNavigation";
 import { supabase } from "@/lib/supabase";
 import { getSupabaseErrorMessage } from "@/lib/supabaseErrors";
 import {
   isSecurityDepositReceipt,
+  securityDepositAdmissionId,
   residentReceiptNotes,
 } from "@/lib/paymentReceiptPurpose";
 
@@ -36,6 +38,8 @@ type PaymentReceipt = {
   payment_id?: string | null;
   created_at: string;
 };
+
+type PaymentAllocation = { payment_id: string; bill_id: string; amount: number };
 
 const inputClass =
   "w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100";
@@ -63,20 +67,7 @@ function firstText(row: GenericRow | undefined, keys: string[]) {
 }
 
 function residentName(row: GenericRow | undefined) {
-  const direct = firstText(row, [
-    "full_name",
-    "resident_name",
-    "name",
-  ]);
-
-  if (direct) return direct;
-
-  const combined = `${firstText(row, ["first_name"])} ${firstText(row, [
-    "last_name",
-    "surname",
-  ])}`.trim();
-
-  return combined || "Resident";
+  return String(row?.full_name || "Resident");
 }
 
 function money(value: unknown) {
@@ -129,6 +120,8 @@ async function getValidAccessToken() {
 export default function PaymentVerificationPage() {
   const [receipts, setReceipts] = useState<PaymentReceipt[]>([]);
   const [residents, setResidents] = useState<GenericRow[]>([]);
+  const [payments, setPayments] = useState<GenericRow[]>([]);
+  const [allocations, setAllocations] = useState<PaymentAllocation[]>([]);
   const [bills, setBills] = useState<GenericRow[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -145,6 +138,8 @@ export default function PaymentVerificationPage() {
       receiptsResult,
       residentsResult,
       billsResult,
+      paymentsResult,
+      allocationsResult,
     ] = await Promise.all([
       supabase
         .from("payment_receipts")
@@ -152,12 +147,14 @@ export default function PaymentVerificationPage() {
         .order("created_at", { ascending: false }),
       supabase.from("residents").select("*"),
       supabase.from("bills").select("*"),
+      supabase.from("payments").select("id,bill_id,amount,payment_status"),
+      supabase.from("payment_allocations").select("payment_id,bill_id,amount"),
     ]);
 
     const firstError =
       receiptsResult.error ||
       residentsResult.error ||
-      billsResult.error;
+      billsResult.error || paymentsResult.error || allocationsResult.error;
 
     if (firstError) {
       setError(getSupabaseErrorMessage(firstError, "Payment receipts could not be loaded."));
@@ -165,6 +162,8 @@ export default function PaymentVerificationPage() {
       setReceipts((receiptsResult.data ?? []) as PaymentReceipt[]);
       setResidents((residentsResult.data ?? []) as GenericRow[]);
       setBills((billsResult.data ?? []) as GenericRow[]);
+      setPayments(paymentsResult.data ?? []);
+      setAllocations((allocationsResult.data ?? []) as PaymentAllocation[]);
     }
 
     setLoading(false);
@@ -364,6 +363,7 @@ export default function PaymentVerificationPage() {
                   {[
                     "Resident",
                     "Payment For",
+                    "Admission / Allocation",
                     "Billing Month",
                     "Amount",
                     "Method",
@@ -388,7 +388,7 @@ export default function PaymentVerificationPage() {
                 {loading ? (
                   <tr>
                     <td
-                      colSpan={11}
+                      colSpan={12}
                       className="px-5 py-12 text-center text-sm text-slate-500"
                     >
                       Loading receipts...
@@ -397,7 +397,7 @@ export default function PaymentVerificationPage() {
                 ) : filteredReceipts.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={11}
+                      colSpan={12}
                       className="px-5 py-12 text-center text-sm text-slate-500"
                     >
                       No payment receipts found.
@@ -414,6 +414,14 @@ export default function PaymentVerificationPage() {
                       (item) => text(item.id) === receipt.bill_id
                     );
 
+                    const paymentAllocationRows = receipt.payment_id
+                      ? allocations.filter((allocation) => allocation.payment_id === receipt.payment_id)
+                      : [];
+                    const allocationBills = paymentAllocationRows
+                      .map((allocation) => bills.find((item) => text(item.id) === allocation.bill_id))
+                      .filter(Boolean);
+
+                    const allocation = bill ? receiptAllocation(bill, payments.filter(payment => payment.id !== receipt.payment_id), Number(receipt.amount)) : null;
                     return (
                       <tr
                         key={receipt.id}
@@ -430,13 +438,17 @@ export default function PaymentVerificationPage() {
                         </td>
 
                         <td className="px-5 py-4 text-sm text-slate-700">
-                          {!receipt.bill_id && isSecurityDepositReceipt(receipt.notes)
+                          {paymentAllocationRows.length > 1
+                            ? "Rent + Security Deposit"
+                            : !receipt.bill_id && isSecurityDepositReceipt(receipt.notes)
                             ? "Security Deposit"
                             : firstText(bill, ["bill_number"]) || "No bill"}
                         </td>
 
                         <td className="px-5 py-4 text-sm text-slate-700">
-                          {firstText(bill, ["billing_month"]) || "—"}
+                          {paymentAllocationRows.length > 1
+                            ? allocationBills.map((item) => firstText(item, ["bill_number"])).filter(Boolean).join(" + ")
+                            : firstText(bill, ["billing_month"]) || "—"}
                         </td>
 
                         <td className="px-5 py-4 text-sm font-semibold text-slate-900">

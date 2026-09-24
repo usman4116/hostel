@@ -24,7 +24,7 @@ type PaymentStatus = "Pending" | "Verified" | "Rejected" | "Cancelled";
 type Payment = {
   id: string;
   payment_number: string | null;
-  bill_id: string;
+  bill_id: string | null;
   resident_id: string;
   payment_date: string;
   amount: number;
@@ -91,22 +91,7 @@ function firstText(row: GenericRow, keys: string[]) {
   return "";
 }
 
-function residentName(row: GenericRow) {
-  const direct = firstText(row, ["full_name", "resident_name", "name"]);
-
-  if (direct) return direct;
-
-  const combined = `${firstText(row, ["first_name"])} ${firstText(row, [
-    "last_name",
-    "surname",
-  ])}`.trim();
-
-  return (
-    combined ||
-    firstText(row, ["phone", "email", "cnic"]) ||
-    "Resident"
-  );
-}
+function residentName(row: GenericRow) { return String(row.full_name || "Resident"); }
 
 function money(value: number) {
   return new Intl.NumberFormat("en-PK", {
@@ -211,7 +196,6 @@ export default function PaymentsPage() {
             residentId: firstText(bill, ["resident_id"]),
             balance: Number(
               bill.balance_amount ??
-                bill.due_amount ??
                 bill.total_amount ??
                 0
             ),
@@ -226,7 +210,7 @@ export default function PaymentsPage() {
 
     return payments.filter((payment) => {
       const resident = residentMap.get(payment.resident_id) ?? "";
-      const bill = billMap.get(payment.bill_id)?.billNumber ?? "";
+      const bill = payment.bill_id ? billMap.get(payment.bill_id)?.billNumber ?? "" : "Combined payment";
 
       const matchesSearch =
         !query ||
@@ -287,6 +271,10 @@ export default function PaymentsPage() {
       setError("Only pending payments can be edited. Verified and historical payments are preserved.");
       return;
     }
+    if (!payment.bill_id) {
+      setError("Combined payments must be managed through the combined payment workflow.");
+      return;
+    }
     setEditingId(payment.id);
     setForm({
       bill_id: payment.bill_id,
@@ -345,7 +333,7 @@ export default function PaymentsPage() {
       return;
     }
 
-    if (Number.isNaN(amount) || amount <= 0) {
+    if (!Number.isFinite(amount) || amount <= 0) {
       setError("Payment amount must be greater than zero.");
       setSaving(false);
       return;
@@ -367,7 +355,7 @@ export default function PaymentsPage() {
       return;
     }
 
-    if (currentBill.bill_status === "Cancelled") {
+    if (["Cancelled", "Draft", "Pending Approval"].includes(currentBill.bill_status)) {
       setError("Payments cannot be recorded against a cancelled bill.");
       setSaving(false);
       return;
@@ -458,10 +446,10 @@ export default function PaymentsPage() {
       ? await supabase
           .from("payments")
           .update(cleanPayload)
-          .eq("id", editingId)
-      : await supabase.from("payments").insert(cleanPayload);
+          .eq("id", editingId).eq("payment_status", "Pending").select("id").maybeSingle()
+      : await supabase.from("payments").insert(cleanPayload).select("id").single();
 
-    if (result.error) {
+    if (result.error || !result.data) {
       setError(getSupabaseErrorMessage(result.error, "The payment could not be saved. Please verify the details and try again.", "This payment or reference already exists."));
       setSaving(false);
       return;
@@ -488,9 +476,8 @@ export default function PaymentsPage() {
   }
 
   async function cancelPayment(payment: Payment) {
-    if (payment.payment_status === "Cancelled") return;
     const confirmed = window.confirm(
-      `Cancel payment ${payment.payment_number ?? ""}? Its history will be preserved.`
+      payment.payment_status === "Cancelled" ? "Reconcile this cancelled payment?s bill and deposit balance?" : `Cancel payment ${payment.payment_number ?? ""}? Its history will be preserved.`
     );
 
     if (!confirmed) return;
@@ -510,12 +497,51 @@ export default function PaymentsPage() {
       return;
     }
     if (currentPayment.payment_status === "Cancelled") {
-      setError("This payment is already cancelled. No second action was applied.");
+      if (!currentPayment.bill_id) {
+        setMessage("This combined payment is already cancelled.");
+        setCancellingId(null);
+        await refresh();
+        return;
+      }
+      try {
+        await refreshBillFinancials(currentPayment.bill_id);
+        setMessage("Cancelled payment balance reconciled. No payment was applied.");
+      } catch { setError("The balance could not be reconciled. Retry this action after resolving the error."); }
       setCancellingId(null);
       await refresh();
       return;
     }
 
+    if (!currentPayment.bill_id) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setError("Your admin session could not be verified. Refresh and sign in again.");
+        setCancellingId(null);
+        return;
+      }
+      const response = await fetch("/api/payment-verification/cancel", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentId: payment.id, reason: "Payment cancelled by staff." }),
+      });
+      const result = await response.json().catch(() => null) as { error?: string; message?: string } | null;
+      if (!response.ok) setError(result?.error || "The combined payment could not be cancelled.");
+      else setMessage(result?.message || "Combined payment cancelled and balances recalculated.");
+      setCancellingId(null);
+      await refresh();
+      return;
+    }
+
+    const { data: paymentBill, error: paymentBillError } = await supabase.from("bills")
+      .select("bill_type, admission_id").eq("id", currentPayment.bill_id).single();
+    if (paymentBillError || !paymentBill) { setError("The payment obligation could not be confirmed."); setCancellingId(null); return; }
+    if (paymentBill.bill_type === "Security Deposit") {
+      const { data: depositAdmission, error: depositError } = await supabase.from("admissions")
+        .select("deposit_status").eq("id", paymentBill.admission_id).single();
+      if (depositError || !depositAdmission || !["Pending", "Held"].includes(depositAdmission.deposit_status)) {
+        setError("A released or deducted deposit requires settlement review before reversing payment."); setCancellingId(null); return;
+      }
+    }
     const { data: cancelledPayment, error: cancelError } = await supabase
       .from("payments")
       .update({
@@ -534,7 +560,7 @@ export default function PaymentsPage() {
       setError(getSupabaseErrorMessage(cancelError, "The payment could not be cancelled."));
     } else {
       try {
-        await refreshBillFinancials(payment.bill_id);
+        await refreshBillFinancials(currentPayment.bill_id);
       } catch {
         setError("The payment was cancelled, but the bill balance could not be refreshed.");
         setCancellingId(null);
@@ -894,7 +920,7 @@ export default function PaymentsPage() {
                         </p>
 
                         <p className="mt-1 text-xs text-slate-500">
-                          {billMap.get(payment.bill_id)?.billNumber ??
+                          {(payment.bill_id && billMap.get(payment.bill_id)?.billNumber) ??
                             "Unknown bill"}
                         </p>
                       </td>
@@ -936,8 +962,7 @@ export default function PaymentsPage() {
                           <button
                             type="button"
                             disabled={
-                              cancellingId === payment.id ||
-                              payment.payment_status === "Cancelled"
+                              cancellingId === payment.id
                             }
                             onClick={() => void cancelPayment(payment)}
                             className="rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50"
@@ -945,7 +970,7 @@ export default function PaymentsPage() {
                             {cancellingId === payment.id
                               ? "Cancelling..."
                               : payment.payment_status === "Cancelled"
-                                ? "Cancelled"
+                                ? "Reconcile balance"
                                 : "Cancel"}
                           </button>
                         </div>

@@ -1,5 +1,7 @@
+import { validDate } from "@/lib/canonical";
 import { isAdmissionReadyForActivation, isContractSignedAndAccepted } from "@/lib/contractWorkflow";
 import { deriveBillStatus, roundMoney } from "@/lib/financials";
+import { paymentBillAmounts } from "@/lib/paymentAllocations";
 
 export type DashboardRow = Record<string, unknown>;
 
@@ -105,12 +107,12 @@ export function buildDashboardSummary(data: DashboardData, now = new Date()) {
 
   const operationalContracts = data.contracts.filter(
     (contract) => !["cancelled", "terminated", "expired", "archived"].includes(
-      normalized(contract.status || contract.contract_status),
+      normalized(contract.status),
     ),
   );
   const pendingSignatureContracts = operationalContracts.filter(
     (contract) =>
-      normalized(contract.status || contract.contract_status) === "pending signature" &&
+      normalized(contract.status) === "pending signature" &&
       !isContractSignedAndAccepted(contract),
   );
   const signedAwaitingApproval = operationalContracts.filter(
@@ -143,7 +145,7 @@ export function buildDashboardSummary(data: DashboardData, now = new Date()) {
       contractsByAdmission.get(text(admission.id)),
     ) &&
       normalized(resident?.status) !== "archived" &&
-      ["available", "active"].includes(normalized(room?.status)) &&
+      ["available", "partially occupied", "occupied"].includes(normalized(room?.status)) &&
       normalized(bed?.status) === "occupied" &&
       text(bed?.room_id) === text(admission.room_id) &&
       !allocationConflict;
@@ -151,7 +153,7 @@ export function buildDashboardSummary(data: DashboardData, now = new Date()) {
   const blockedByContractApproval = pendingAdmissions.filter((admission) => {
     const contract = contractsByAdmission.get(text(admission.id));
     return (
-      normalized(admission.deposit_status) === "received" &&
+      normalized(admission.deposit_status) === "held" &&
       Boolean(contract) &&
       ["submitted", "signed"].includes(
         normalized(contract?.resident_signature_status),
@@ -171,16 +173,16 @@ export function buildDashboardSummary(data: DashboardData, now = new Date()) {
   const verifiedByBill = new Map<string, number>();
   data.payments.forEach((payment) => {
     if (normalized(payment.payment_status) !== "verified") return;
-    const billId = text(payment.bill_id);
-    verifiedByBill.set(
-      billId,
-      roundMoney((verifiedByBill.get(billId) ?? 0) + number(payment.amount)),
-    );
+    for (const allocation of paymentBillAmounts(payment, Array.isArray(payment.allocations) ? payment.allocations as Array<{ bill_id: string; amount: number }> : [])) {
+      const billId = text(allocation.bill_id);
+      if (!billId) continue;
+      verifiedByBill.set(billId, roundMoney((verifiedByBill.get(billId) ?? 0) + number(allocation.amount)));
+    }
   });
 
   const outstandingBills = data.bills
     .filter(
-      (bill) => !["cancelled", "archived"].includes(normalized(bill.bill_status)),
+      (bill) => !["cancelled", "archived", "draft", "pending approval"].includes(normalized(bill.bill_status)),
     )
     .map((bill) => {
       const total = roundMoney(number(bill.total_amount));
@@ -228,8 +230,9 @@ export function buildDashboardSummary(data: DashboardData, now = new Date()) {
   const expiringNotices = data.notices.filter((notice) => {
     const expiryDate = text(notice.expiry_date).slice(0, 10);
     return (
-      ["published", "active"].includes(normalized(notice.status)) &&
-      notice.is_active !== false &&
+      ["published"].includes(normalized(notice.status)) &&
+      validDate(notice.publish_date) && notice.publish_date <= today &&
+      validDate(expiryDate) &&
       Boolean(expiryDate) &&
       expiryDate >= today &&
       expiryDate <= nextSevenDays

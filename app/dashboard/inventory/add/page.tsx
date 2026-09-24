@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { bigintId } from "@/lib/canonical";
 import { supabase } from "@/lib/supabase";
 
 type Category = {
@@ -197,7 +198,7 @@ export default function AddInventoryPage() {
       .insert({
         asset_code: formData.asset_code,
         item_name: formData.item_name,
-        category_id: Number(formData.category_id),
+        category_id: bigintId(formData.category_id),
         quantity: Number(formData.quantity),
         available_quantity: Number(formData.available_quantity),
         assigned_quantity: Number(formData.assigned_quantity),

@@ -32,7 +32,6 @@ type Contract = {
   monthly_rent: number;
   security_deposit: number;
   status: ContractStatus | null;
-  contract_status: string | null;
   notes: string | null;
 };
 
@@ -72,7 +71,7 @@ export default function EditContractPage() {
         supabase
           .from("contracts")
           .select(
-            "id, resident_id, start_date, end_date, monthly_rent, security_deposit, status, contract_status, notes",
+            "id, resident_id, start_date, end_date, monthly_rent, security_deposit, status, notes",
           )
           .eq("id", contractId)
           .maybeSingle(),
@@ -101,7 +100,7 @@ export default function EditContractPage() {
       setMonthlyRent(String(contract.monthly_rent ?? ""));
       setSecurityDeposit(String(contract.security_deposit ?? ""));
       setContractStatus(
-        (contract.status ?? contract.contract_status ?? "Active") as ContractStatus,
+        (contract.status ?? "Active") as ContractStatus,
       );
       setNotes(contract.notes ?? "");
 
@@ -141,7 +140,7 @@ export default function EditContractPage() {
     setSaving(true);
     const contractResult = await supabase
       .from("contracts")
-      .select("id")
+      .select("id, updated_at")
       .eq("id", contractId)
       .maybeSingle();
 
@@ -179,16 +178,16 @@ export default function EditContractPage() {
       }
     }
 
-    const { error: updateError } = await supabase
+    const { data: updated, error: updateError } = await supabase
       .from("contracts")
       .update({
         end_date: endDate || null,
         notes: notes.trim() || null,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", contractId);
+      .eq("id", contractId).eq("updated_at", contractResult.data.updated_at).select("id").maybeSingle();
 
-    if (updateError) {
+    if (updateError || !updated) {
       setMessage(
         agreementUploaded
           ? "The replacement agreement was uploaded, but the contract changes were not saved. The previous agreement was not deleted."

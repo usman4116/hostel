@@ -1,5 +1,8 @@
 "use client";
 
+import { normalizeIdentityEmail } from "@/lib/identity";
+
+
 import {
   FormEvent,
   ReactNode,
@@ -79,7 +82,7 @@ export default function AdminProfilePage() {
     const profileResult = await supabase
       .from("staff_users")
       .select("*")
-      .ilike("email", authEmail)
+      .eq("email", normalizeIdentityEmail(authEmail))
       .maybeSingle();
 
     const selectedProfile = profileResult.data as UserRow | null;

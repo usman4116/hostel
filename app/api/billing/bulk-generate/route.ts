@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { notifyResidentEvent } from "@/lib/notifications/server";
 import {
   BILLING_STAFF_ROLES,
   apiError,
@@ -114,13 +115,13 @@ export async function POST(request: NextRequest) {
         .in("id", residentIds),
       supabaseAdmin
         .from("contracts")
-        .select("id, admission_id, monthly_rent, status, contract_status")
+        .select("id, admission_id, monthly_rent, status")
         .in("admission_id", admissionIds),
       getMeterReadingConfig(supabaseAdmin),
       supabaseAdmin
         .from("ac_bills")
         .select("id, resident_id, admission_id, billing_month, total_amount, bill_id")
-        .like("billing_month", `${billingMonth}%`),
+        .eq("billing_month", billingMonth),
     ]);
 
     if (residentsResult.error || contractsResult.error) {
@@ -132,7 +133,7 @@ export async function POST(request: NextRequest) {
     );
     const contractRentByAdmission = new Map<string, number>();
     for (const contract of contractsResult.data ?? []) {
-      const status = text(contract.status || contract.contract_status).toLowerCase();
+      const status = text(contract.status).toLowerCase();
       if (status === "cancelled" || status === "terminated") continue;
       const rent = amount(contract.monthly_rent);
       if (rent > 0) contractRentByAdmission.set(text(contract.admission_id), rent);
@@ -258,6 +259,25 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const notificationResults = await Promise.allSettled(
+      (created ?? []).map((bill) =>
+        notifyResidentEvent("bill_generated", bill.id),
+      ),
+    );
+
+    const notificationFailures = notificationResults.filter(
+      (result) =>
+        result.status === "rejected" ||
+        (result.status === "fulfilled" && !result.value.delivered),
+    ).length;
+
+    if (notificationFailures > 0) {
+      console.warn("[billing] Some bill notifications were not delivered.", {
+        billingMonth,
+        failed: notificationFailures,
+        attempted: created?.length ?? 0,
+      });
+    }
     console.info("[billing] Bulk bills generated.", {
       billingMonth,
       created: created?.length ?? 0,

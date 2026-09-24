@@ -13,7 +13,6 @@ import { supabase } from "@/lib/supabase";
 import { ensureResidentLogin, resetResidentPassword } from "@/lib/residentLogin";
 import {
   getSupabaseErrorMessage,
-  isMissingColumnError,
 } from "@/lib/supabaseErrors";
 import {
   getOperationalResidentStatus,
@@ -41,9 +40,7 @@ type Resident = {
   company_university?: string | null;
   photo_url?: string | null;
   id_card_url?: string | null;
-  address?: string | null;
   status: ResidentStatus;
-  portal_temp_password?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -487,7 +484,7 @@ export default function ResidentsPage() {
       phone: resident.phone ?? "",
       email: resident.email ?? "",
       emergency_contact: resident.emergency_contact ?? "",
-      permanent_address: resident.permanent_address ?? resident.address ?? "",
+      permanent_address: resident.permanent_address ?? "",
       city: resident.city ?? "",
       nationality: resident.nationality ?? "",
       occupation: resident.occupation ?? "",
@@ -592,23 +589,11 @@ export default function ResidentsPage() {
       company_university: form.company_university.trim() || null,
       photo_url: form.photo_url.trim() || null,
       id_card_url: form.id_card_url.trim() || null,
-      address: form.permanent_address.trim() || null,
       status: editingId ? form.status : RESIDENT_STATUS.INACTIVE,
       updated_at: now,
       ...(editingId ? {} : { created_at: now }),
     };
 
-    const fallbackPayload = {
-      full_name: form.full_name.trim(),
-      phone: form.phone.trim() || null,
-      email: normalizedEmail || null,
-      cnic: form.cnic.trim() || null,
-      emergency_contact: form.emergency_contact.trim() || null,
-      address: form.permanent_address.trim() || null,
-      status: editingId ? form.status : RESIDENT_STATUS.INACTIVE,
-      updated_at: now,
-      ...(editingId ? {} : { created_at: now }),
-    };
 
     let result;
     try {
@@ -620,15 +605,6 @@ export default function ResidentsPage() {
             .select("id, full_name, email")
             .single();
 
-      if (result.error && isMissingColumnError(result.error)) {
-        result = editingId
-          ? await supabase.from("residents").update(fallbackPayload).eq("id", editingId)
-          : await supabase
-              .from("residents")
-              .insert(fallbackPayload)
-              .select("id, full_name, email")
-              .single();
-      }
     } catch {
       setError("Unable to save resident. Please try again.");
       setSaving(false);
@@ -655,7 +631,7 @@ export default function ResidentsPage() {
       try {
         const login = await ensureResidentLogin(String(result.data.id));
         successMessage = login.created
-          ? `Resident added successfully. Portal login: ${login.email} | Temporary password: ${login.temporaryPassword}`
+          ? `Resident added successfully. Portal login: ${login.email} | One-time temporary password: ${login.temporaryPassword} (Provide to resident now; not stored in database).`
           : `Resident added successfully. A portal login already exists for ${login.email}.`;
       } catch (loginError) {
         successMessage = `Resident added successfully, but the portal login could not be created automatically. ${
@@ -693,7 +669,7 @@ export default function ResidentsPage() {
     try {
       const result = await resetResidentPassword(resident.id);
       setMessage(
-        `Portal password reset successfully. Email: ${result.email} | Temporary password: ${result.temporaryPassword}`,
+        `Portal password reset successfully. Email: ${result.email} | One-time temporary password: ${result.temporaryPassword} (Provide to resident now; not stored in database).`,
       );
     } catch (resetError) {
       setError(
@@ -961,11 +937,6 @@ export default function ResidentsPage() {
                       <td className="px-5 py-4 text-sm text-slate-700">
                         <p>{resident.phone || "No phone"}</p>
                         <p className="mt-1 text-xs text-slate-500">{resident.email || "No email"}</p>
-                        {resident.portal_temp_password && (
-                          <p className="mt-1 text-xs font-semibold text-indigo-600">
-                            Temp Pass: {resident.portal_temp_password}
-                          </p>
-                        )}
                       </td>
                       <td className="px-5 py-4 text-sm text-slate-700">
                         <p>{resident.cnic || "—"}</p>
@@ -1041,11 +1012,11 @@ export default function ResidentsPage() {
                     <InfoCard label="Father / Guardian" value={text(profile.resident.father_name || "—")} />
                     <InfoCard label="Phone" value={text(profile.resident.phone || "—")} />
                     <InfoCard label="Email" value={text(profile.resident.email || "—")} />
-                    <InfoCard label="Portal Password" value={text(profile.resident.portal_temp_password || "—")} />
+                    <InfoCard label="Portal Access" value={profile.resident.email ? "Configured (Supabase Auth)" : "No email"} />
                     <InfoCard label="CNIC / Passport" value={text(profile.resident.cnic || "—")} />
                     <InfoCard label="Date of Birth" value={text(profile.resident.dob || "—")} />
                     <InfoCard label="Gender" value={text(profile.resident.gender || "—")} />
-                    <InfoCard label="Address" value={text(profile.resident.permanent_address || profile.resident.address || "—")} />
+                    <InfoCard label="Address" value={text(profile.resident.permanent_address || "—")} />
                     <InfoCard label="City" value={text(profile.resident.city || "—")} />
                     <InfoCard label="Nationality" value={text(profile.resident.nationality || "—")} />
                     <InfoCard label="Occupation" value={text(profile.resident.occupation || "—")} />
@@ -1056,19 +1027,19 @@ export default function ResidentsPage() {
 
                 {profileTab === "Room & Bed" && (
                   <div className="grid gap-4 md:grid-cols-2">
-                    <InfoCard label="Room" value={firstText(profile.room, ["room_number", "number", "name"]) || "—"} />
-                    <InfoCard label="Bed" value={firstText(profile.bed, ["bed_number", "bed_code", "number", "name"]) || "—"} />
+                    <InfoCard label="Room" value={firstText(profile.room, ["room_number"]) || "—"} />
+                    <InfoCard label="Bed" value={firstText(profile.bed, ["bed_number"]) || "—"} />
                     <InfoCard label="Room Type" value={firstText(profile.room, ["room_type", "type"]) || "—"} />
-                    <InfoCard label="Admission Status" value={firstText(profile.admission, ["status", "admission_status"]) || "Active"} />
+                    <InfoCard label="Admission Status" value={firstText(profile.admission, ["status"]) || "Active"} />
                   </div>
                 )}
 
                 {profileTab === "Admission" && (
                   <div className="grid gap-4 md:grid-cols-2">
                     <InfoCard label="Admission Date" value={text(firstText(profile.admission, ["admission_date"]).slice(0, 10) || "—")} />
-                    <InfoCard label="Expected Leaving" value={text(firstText(profile.admission, ["expected_leaving_date", "leaving_date"]).slice(0, 10) || "—")} />
-                    <InfoCard label="Monthly Rent" value={money(profile.admission?.monthly_rent ?? profile.room?.monthly_rent ?? profile.bed?.monthly_rent ?? 0)} />
-                    <InfoCard label="Deposit" value={money(profile.admission?.security_deposit ?? profile.admission?.deposit_amount ?? 0)} />
+                    <InfoCard label="Expected Leaving" value={text(firstText(profile.admission, ["expected_leaving_date"]).slice(0, 10) || "—")} />
+                    <InfoCard label="Monthly Rent" value={money(profile.admission?.monthly_rent ?? profile.room?.monthly_rent ?? 0)} />
+                    <InfoCard label="Deposit" value={money(profile.admission?.security_deposit ?? 0)} />
                   </div>
                 )}
 
@@ -1082,16 +1053,16 @@ export default function ResidentsPage() {
                 )}
 
                 {profileTab === "Billing" && (
-                  <DataTable headers={["Bill No.", "Month", "Total", "Paid", "Balance", "Status"]} rows={profile.bills.map((bill) => [text(firstText(bill, ["bill_number"]) || "—"), text(firstText(bill, ["billing_month"]).slice(0, 7) || "—"), money(bill.total_amount), money(bill.paid_amount), money(bill.balance_amount ?? bill.due_amount), text(firstText(bill, ["bill_status", "status"]) || "Pending")])} />
+                    <DataTable headers={["Bill No.", "Month", "Total", "Paid", "Balance", "Status"]} rows={profile.bills.map((bill) => [text(firstText(bill, ["bill_number"]) || "—"), text(firstText(bill, ["billing_month"]).slice(0, 7) || "—"), money(bill.total_amount), money(bill.paid_amount), money(bill.balance_amount), text(firstText(bill, ["bill_status"]) || "Pending")])} />
                 )}
 
                 {profileTab === "Payments" && (
-                  <DataTable headers={["Payment No.", "Date", "Method", "Reference", "Amount", "Status"]} rows={profile.payments.map((payment) => [text(firstText(payment, ["payment_number"]) || "—"), text(firstText(payment, ["payment_date", "created_at"]).slice(0, 10) || "—"), text(firstText(payment, ["payment_method"]) || "—"), text(firstText(payment, ["reference_number"]) || "—"), money(payment.amount), text(firstText(payment, ["payment_status", "status"]) || "Pending")])} />
+                  <DataTable headers={["Payment No.", "Date", "Method", "Reference", "Amount", "Status"]} rows={profile.payments.map((payment) => [text(firstText(payment, ["payment_number"]) || "—"), text(firstText(payment, ["payment_date", "created_at"]).slice(0, 10) || "—"), text(firstText(payment, ["payment_method"]) || "—"), text(firstText(payment, ["reference_number"]) || "—"), money(payment.amount), text(firstText(payment, ["payment_status"]) || "Pending")])} />
                 )}
 
                 {profileTab === "Deposit" && (
                   <div className="grid gap-4 md:grid-cols-2">
-                    <InfoCard label="Security Deposit" value={money(profile.admission?.security_deposit ?? profile.admission?.deposit_amount ?? 0)} />
+                    <InfoCard label="Security Deposit" value={money(profile.admission?.security_deposit ?? 0)} />
                     <InfoCard label="Deposit Status" value={text(firstText(profile.admission, ["deposit_status"]) || "Not recorded")} />
                   </div>
                 )}

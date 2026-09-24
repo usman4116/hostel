@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { resolveAuthenticatedResident } from "@/lib/residentPortalAuth";
 import { isNoticeVisibleToResident } from "@/lib/noticeVisibility";
 
-type Notice = { id: string; title: string; description: string; notice_type: string | null; target_audience: string | null; audience: string | null; resident_id: string | null; room_id: string | null; priority: string | null; status: string | null; publish_date: string | null; expiry_date: string | null; is_active: boolean | null; pinned: boolean | null };
+type Notice = { id: string; title: string; description: string; notice_type: string | null;  audience: string | null; resident_id: string | null; room_id: string | null; priority: string | null; status: string | null; publish_date: string | null; expiry_date: string | null; pinned: boolean | null };
 const text = (value: unknown) => value == null ? "" : String(value);
 
 export default function ResidentNoticesPage() {
@@ -16,9 +16,9 @@ export default function ResidentNoticesPage() {
     const auth = await resolveAuthenticatedResident();
     if (!auth.resident) { setError(auth.error || "Your resident profile could not be verified."); setLoading(false); return; }
     const [noticeResult, admissionResult, recipientResult] = await Promise.all([
-      supabase.from("notices").select("id,title,description,notice_type,target_audience,audience,resident_id,room_id,priority,status,publish_date,expiry_date,is_active,pinned").eq("status", "Published").order("pinned", { ascending: false }).order("publish_date", { ascending: false }),
-      supabase.from("admissions").select("room_id,status").eq("resident_id", auth.resident.id).ilike("status", "Active").order("created_at", { ascending: false }).limit(1).maybeSingle(),
-      supabase.from("notice_recipients").select("notice_id").eq("resident_id", auth.resident.id),
+      supabase.from("notices").select("id::text,title,description,notice_type,audience,resident_id,room_id,priority,status,publish_date,expiry_date,pinned").eq("status", "Published").order("pinned", { ascending: false }).order("publish_date", { ascending: false }),
+      supabase.from("admissions").select("room_id,status").eq("resident_id", auth.resident.id).in("status", ["Pending", "Active"]).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      supabase.from("notice_recipients").select("notice_id::text").eq("resident_id", auth.resident.id),
     ]);
     if (noticeResult.error || admissionResult.error || recipientResult.error) { setError("Your notices could not be loaded. Please refresh and try again."); setLoading(false); return; }
     const roomId = text(admissionResult.data?.room_id);

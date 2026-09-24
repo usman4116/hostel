@@ -1,7 +1,7 @@
-import { isSecurityDepositReceipt, receiptPaymentMethod } from "@/lib/paymentReceiptPurpose";
+import { isSecurityDepositReceipt, receiptPaymentMethod } from "./paymentReceiptPurpose";
 
 export type PaymentHistoryRow = Record<string, unknown>;
-export type ResidentPaymentStatus = "Paid" | "Pending" | "Rejected" | "Refunded";
+export type ResidentPaymentStatus = "Paid" | "Pending" | "Rejected" | "Refunded" | "Cancelled";
 
 export type ResidentPaymentHistoryEntry = {
   key: string;
@@ -29,7 +29,8 @@ function text(value: unknown) {
 
 function paymentStatus(value: unknown): ResidentPaymentStatus {
   const status = text(value).toLowerCase();
-  if (["verified", "paid", "completed", "received"].includes(status)) return "Paid";
+  if (status === "verified") return "Paid";
+  if (status === "cancelled") return "Cancelled";
   if (status === "rejected") return "Rejected";
   if (status === "refunded") return "Refunded";
   return "Pending";
@@ -50,21 +51,22 @@ export function buildResidentPaymentHistory({ bills, payments, receipts }: {
   receipts: PaymentHistoryRow[];
 }) {
   const billMap = new Map(bills.map((bill) => [text(bill.id), bill]));
-  const linkedReceiptIds = new Set(payments.map((payment) => text(payment.receipt_id)).filter(Boolean));
+  const paymentIds = new Set(payments.map(payment => text(payment.id)));
   const entries: ResidentPaymentHistoryEntry[] = [];
 
   for (const payment of payments) {
     const id = text(payment.id);
     if (!id) continue;
-    const bill = billMap.get(text(payment.bill_id));
-    const status = paymentStatus(payment.payment_status ?? payment.status);
+    const allocations = Array.isArray(payment.allocations) ? payment.allocations : [];
+    const bill = billMap.get(text(payment.bill_id)) || billMap.get(text(allocations[0]?.bill_id));
+    const status = paymentStatus(payment.payment_status);
     entries.push({
       key: `payment-${id}`,
       source: "payment",
       sourceId: id,
       date: text(payment.payment_date ?? payment.verified_at ?? payment.created_at).slice(0, 10),
-      paymentType: bill ? `Bill payment${billMonth(bill.billing_month) ? ` · ${billMonth(bill.billing_month)}` : ""}` : "Account payment",
-      billReference: text(bill?.bill_number) || text(payment.reference_number) || "Historical payment",
+      paymentType: allocations.length > 1 ? "Rent + Security Deposit" : bill ? `Bill payment${billMonth(bill.billing_month) ? ` · ${billMonth(bill.billing_month)}` : ""}` : "Account payment",
+      billReference: allocations.length > 1 ? "Rent + Security Deposit" : text(bill?.bill_number) || text(payment.reference_number) || "Historical payment",
       amount: Number(payment.amount || 0),
       method: text(payment.payment_method) || "Payment method not recorded",
       status,
@@ -74,10 +76,11 @@ export function buildResidentPaymentHistory({ bills, payments, receipts }: {
 
   for (const receipt of receipts) {
     const id = text(receipt.id);
-    if (!id || text(receipt.payment_id) || linkedReceiptIds.has(id)) continue;
+    if (!id || paymentIds.has(text(receipt.payment_id))) continue;
     const bill = billMap.get(text(receipt.bill_id));
     const deposit = isSecurityDepositReceipt(receipt.notes);
-    const status = paymentStatus(receipt.status);
+    // Proof approval alone is not a posted payment. Unlinked approved proof requires reconciliation.
+    const status = paymentStatus(receipt.status) === "Paid" ? "Pending" : paymentStatus(receipt.status);
     entries.push({
       key: `receipt-${id}`,
       source: "receipt",
@@ -88,7 +91,7 @@ export function buildResidentPaymentHistory({ bills, payments, receipts }: {
       amount: Number(receipt.amount || 0),
       method: receiptPaymentMethod(receipt.notes) || "Payment method not recorded",
       status,
-      downloadable: status === "Paid",
+      downloadable: false,
     });
   }
 

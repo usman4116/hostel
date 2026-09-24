@@ -38,14 +38,14 @@ type RoomStatus = "Available" | "Occupied" | "Maintenance" | "Inactive";
 type Room = {
   id: string;
   room_number: string;
-  building_name: string | null;
-  floor: string | null;
+  block_name: string | null;
+  floor_number: number | null;
   room_type: string | null;
-  capacity: number;
+  total_beds: number;
   occupied_beds: number;
   status: RoomStatus;
   monthly_rent: number | null;
-  notes: string | null;
+  description: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -72,13 +72,13 @@ type Bed = {
 
 type RoomForm = {
   room_number: string;
-  building_name: string;
-  floor: string;
+  block_name: string;
+  floor_number: string;
   room_type: string;
-  capacity: string;
+  total_beds: string;
   status: RoomStatus;
   monthly_rent: string;
-  notes: string;
+  description: string;
 };
 
 type BedForm = {
@@ -91,13 +91,13 @@ type BedForm = {
 
 const emptyRoomForm: RoomForm = {
   room_number: "",
-  building_name: "",
-  floor: "",
+  block_name: "",
+  floor_number: "",
   room_type: "Shared",
-  capacity: "1",
+  total_beds: "1",
   status: "Available",
   monthly_rent: "",
-  notes: "",
+  description: "",
 };
 
 const emptyBedForm: BedForm = {
@@ -181,14 +181,10 @@ export default function RoomsPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mappedRooms = (roomsData ?? []).map((r: any) => ({
         ...r,
-        building_name: r.building_name ?? r.block_name ?? null,
-        floor:
-          r.floor ??
-          (r.floor_number !== null && r.floor_number !== undefined
-            ? String(r.floor_number)
-            : null),
-        notes: r.notes ?? r.description ?? null,
-        capacity: r.capacity ?? r.total_beds ?? 1,
+        block_name: r.block_name ?? null,
+        floor_number: r.floor_number ?? null,
+        description: r.description ?? null,
+        total_beds: r.total_beds ?? 1,
       }));
       setRooms(mappedRooms as Room[]);
     }
@@ -270,8 +266,8 @@ export default function RoomsPage() {
       const matchesSearch =
         !query ||
         room.room_number.toLowerCase().includes(query) ||
-        (room.building_name ?? "").toLowerCase().includes(query) ||
-        (room.floor ?? "").toLowerCase().includes(query) ||
+        (room.block_name ?? "").toLowerCase().includes(query) ||
+        String(room.floor_number ?? "").toLowerCase().includes(query) ||
         (room.room_type ?? "").toLowerCase().includes(query);
 
       const matchesStatus =
@@ -309,7 +305,7 @@ export default function RoomsPage() {
           beds.filter(
             (bed) =>
               bed.room_id === room.id && isOperationalBedStatus(bed.status),
-          ).length < room.capacity,
+          ).length < room.total_beds,
       ),
     [rooms, beds],
   );
@@ -368,13 +364,13 @@ export default function RoomsPage() {
     setEditingRoomId(room.id);
     setRoomForm({
       room_number: room.room_number,
-      building_name: room.building_name ?? "",
-      floor: room.floor ?? "",
+      block_name: room.block_name ?? "",
+      floor_number: room.floor_number == null ? "" : String(room.floor_number),
       room_type: room.room_type ?? "Shared",
-      capacity: String(room.capacity ?? 1),
+      total_beds: String(room.total_beds ?? 1),
       status: room.status,
       monthly_rent: room.monthly_rent ? String(room.monthly_rent) : "",
-      notes: room.notes ?? "",
+      description: room.description ?? "",
     });
     setShowRoomForm(true);
     setShowBedForm(false);
@@ -429,27 +425,23 @@ export default function RoomsPage() {
       return;
     }
 
-    const capacity = Math.max(1, Number(roomForm.capacity) || 1);
+    const capacity = Math.max(1, Number(roomForm.total_beds) || 1);
     const parsedFloorNumber =
-      roomForm.floor && /^-?\d+$/.test(roomForm.floor.trim())
-        ? parseInt(roomForm.floor.trim(), 10)
+      roomForm.floor_number && /^-?\d+$/.test(roomForm.floor_number.trim())
+        ? parseInt(roomForm.floor_number.trim(), 10)
         : null;
 
     const payload = {
       room_number: roomForm.room_number.trim(),
-      building_name: roomForm.building_name.trim() || null,
-      block_name: roomForm.building_name.trim() || null,
-      floor: roomForm.floor.trim() || null,
+      block_name: roomForm.block_name.trim() || null,
       floor_number: parsedFloorNumber,
       room_type: roomForm.room_type.trim() || "Shared",
-      capacity,
       total_beds: capacity,
       status: roomForm.status,
       monthly_rent: roomForm.monthly_rent
         ? Number(roomForm.monthly_rent)
         : 0,
-      notes: roomForm.notes.trim() || null,
-      description: roomForm.notes.trim() || null,
+      description: roomForm.description.trim() || null,
       updated_at: new Date().toISOString(),
     };
 
@@ -711,9 +703,9 @@ export default function RoomsPage() {
 
                 <Field label="Building">
                   <input
-                    value={roomForm.building_name}
+                    value={roomForm.block_name}
                     onChange={(event) =>
-                      updateRoomField("building_name", event.target.value)
+                      updateRoomField("block_name", event.target.value)
                     }
                     className={inputClass}
                     placeholder="Main Building"
@@ -722,9 +714,9 @@ export default function RoomsPage() {
 
                 <Field label="Floor">
                   <input
-                    value={roomForm.floor}
+                    value={roomForm.floor_number}
                     onChange={(event) =>
-                      updateRoomField("floor", event.target.value)
+                      updateRoomField("floor_number", event.target.value)
                     }
                     className={inputClass}
                     placeholder="Ground Floor"
@@ -750,9 +742,9 @@ export default function RoomsPage() {
                   <input
                     type="number"
                     min="1"
-                    value={roomForm.capacity}
+                    value={roomForm.total_beds}
                     onChange={(event) =>
-                      updateRoomField("capacity", event.target.value)
+                      updateRoomField("total_beds", event.target.value)
                     }
                     className={inputClass}
                   />
@@ -791,9 +783,9 @@ export default function RoomsPage() {
 
                 <Field label="Notes" wide>
                   <textarea
-                    value={roomForm.notes}
+                    value={roomForm.description}
                     onChange={(event) =>
-                      updateRoomField("notes", event.target.value)
+                      updateRoomField("description", event.target.value)
                     }
                     className={`${inputClass} min-h-24`}
                     placeholder="Room notes"
@@ -862,7 +854,7 @@ export default function RoomsPage() {
                         ).length;
                         return (
                           <option key={room.id} value={room.id}>
-                            Room {room.room_number} ({roomActiveBeds} / {room.capacity} beds)
+                            Room {room.room_number} ({roomActiveBeds} / {room.total_beds} beds)
                           </option>
                         );
                       })}
@@ -1016,7 +1008,7 @@ export default function RoomsPage() {
                 const roomHasLinks =
                   roomBeds.length > 0 || referencedRoomIds.has(room.id);
                 const canAddBed = room.status !== "Inactive";
-                const exceedsCapacity = activeRoomBeds.length > room.capacity;
+                const exceedsCapacity = activeRoomBeds.length > room.total_beds;
 
                 return (
                   <article
@@ -1039,8 +1031,8 @@ export default function RoomsPage() {
                         </div>
 
                         <p className="mt-2 text-sm text-slate-500">
-                          {room.building_name || "No building"} ·{" "}
-                          {room.floor || "No floor"} ·{" "}
+                          {room.block_name || "No building"} ·{" "}
+                          {room.floor_number || "No floor"} ·{" "}
                           {room.room_type || "No type"}
                         </p>
                       </div>
@@ -1080,7 +1072,7 @@ export default function RoomsPage() {
                     )}
 
                     <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                      <InfoCard label="Capacity" value={String(room.capacity)} />
+                      <InfoCard label="Capacity" value={String(room.total_beds)} />
                       <InfoCard
                         label="Beds Added"
                         value={String(activeRoomBeds.length)}

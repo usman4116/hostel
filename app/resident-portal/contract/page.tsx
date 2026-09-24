@@ -28,15 +28,12 @@ type Contract = {
   admission_id: string | null;
   template_id: number | null;
   contract_content: string | null;
-  terms: string | null;
   start_date: string;
   end_date: string | null;
   monthly_rent: number | null;
   security_deposit: number | null;
   notice_period_days: number;
   status: string | null;
-  contract_status: string | null;
-  resident_signature: string | null;
   resident_signature_url: string | null;
   resident_signature_status: string | null;
   owner_signature_status: string | null;
@@ -194,7 +191,7 @@ export default function ResidentContractPage() {
         supabase
           .from("contracts")
           .select(
-            "id, resident_id, admission_id, template_id, contract_content, terms, status, contract_status, resident_signature, resident_signature_url, resident_signature_status, signed_by_resident, signed_at",
+            "id, resident_id, admission_id, template_id, contract_content, status, resident_signature_url, resident_signature_status, signed_by_resident, signed_at",
           )
           .eq("id", data.contract.id)
           .eq("resident_id", auth.resident.id)
@@ -224,7 +221,7 @@ export default function ResidentContractPage() {
       if (!current.template_id || !getContractTerms(current)) {
         throw new Error("This contract does not contain complete terms. Please contact management.");
       }
-      if ((current.status || current.contract_status) !== "Pending Signature") {
+      if ((current.status) !== "Pending Signature") {
         throw new Error("This contract is not awaiting a resident signature.");
       }
       const signatureStatus = current.resident_signature_status || "Pending";
@@ -258,25 +255,21 @@ export default function ResidentContractPage() {
       let signatureUpdate = supabase
         .from("contracts")
         .update({
-          resident_signature: signatureUrl,
           resident_signature_url: signatureUrl,
-          resident_signature_status: "Approved",
+          resident_signature_status: "Submitted",
           signed_by_resident: true,
           signed_at: signedAt,
-          status: "Active",
-          contract_status: "Active",
           updated_at: signedAt,
         })
         .eq("id", current.id)
         .eq("resident_id", auth.resident.id)
+        .eq("admission_id", data.admission.id)
+        .eq("contract_content", current.contract_content)
         .eq("resident_signature_status", signatureStatus);
 
       signatureUpdate = current.status
         ? signatureUpdate.eq("status", current.status)
         : signatureUpdate.is("status", null);
-      signatureUpdate = current.contract_status
-        ? signatureUpdate.eq("contract_status", current.contract_status)
-        : signatureUpdate.is("contract_status", null);
 
       const { data: signedContract, error: updateError } = await signatureUpdate
         .select("id")
@@ -290,16 +283,10 @@ export default function ResidentContractPage() {
         );
       }
 
-      // Automatically activate the admission
-      await supabase
-        .from("admissions")
-        .update({ status: "Active", updated_at: signedAt })
-        .eq("id", data.admission.id)
-        .eq("resident_id", auth.resident.id);
 
       setAcceptedTerms(false);
       setSignatureFile(null);
-      setMessage("Contract signed and successfully activated!");
+      setMessage("Signature submitted for staff approval. Your admission remains Pending.");
       await loadContract();
     } catch (signError) {
       setError(signError instanceof Error ? signError.message : "Unable to sign this contract.");
@@ -327,9 +314,9 @@ export default function ResidentContractPage() {
   const signed = hasResidentSignature(data.contract);
   const signatureStatus = data.contract.resident_signature_status || "Pending";
   const canSubmitSignature =
-    data.admission.status === "Pending" &&
+    data.admission.status === "Pending" && data.contract.status === "Pending Signature" &&
     ["Pending", "Re-sign Required"].includes(signatureStatus);
-  const displayStatus = signed && data.admission.status === "Pending" ? `${signatureStatus} — Awaiting Admin` : data.contract.status || data.contract.contract_status || "Pending Signature";
+  const displayStatus = signed && data.admission.status === "Pending" ? `${signatureStatus} — Awaiting Admin` : data.contract.status || "Pending Signature";
 
   return (
     <main className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8">

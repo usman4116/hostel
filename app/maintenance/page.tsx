@@ -14,6 +14,7 @@ import Link from "next/link";
 import { getSupabaseErrorMessage } from "@/lib/supabaseErrors";
 import { optimizeImageForUpload, safeStorageFileName, validateImageFile } from "@/lib/imageValidation";
 import { MAINTENANCE_PHOTO_BUCKET, maintenancePhotoUrl } from "@/lib/maintenanceStorage";
+import PrivateStorageLinks from "@/components/storage/PrivateStorageLinks";
 
 type GenericRow = Record<string, unknown>;
 
@@ -30,7 +31,6 @@ type MaintenanceRequest = {
   title: string | null;
   category: string | null;
   description: string | null;
-  complaint_description: string | null;
   priority: Priority;
   status: RequestStatus;
   assigned_to: string | null;
@@ -134,15 +134,12 @@ function firstText(row: GenericRow | undefined, keys: string[]) {
 }
 
 function residentName(row: GenericRow | undefined) {
-  return (
-    firstText(row, ["full_name", "resident_name", "name"]) ||
-    "No resident"
-  );
+  return String(row?.full_name || "Resident");
 }
 
 function roomNumber(row: GenericRow | undefined) {
   return (
-    firstText(row, ["room_number", "room_no", "number", "name"]) ||
+    firstText(row, ["room_number","room_no"]) ||
     "No room"
   );
 }
@@ -372,7 +369,7 @@ export default function MaintenancePage() {
       bed_id: request.bed_id ?? "",
       title: request.title ?? "",
       category: request.category ?? "Other",
-      description: request.description ?? request.complaint_description ?? "",
+      description: request.description ?? "",
       priority: request.priority,
       status: request.status,
       assigned_to: request.assigned_to ?? "",
@@ -875,7 +872,7 @@ export default function MaintenancePage() {
                 <Field label="Bed">
                   <select disabled={Boolean(editingId) || !form.room_id} value={form.bed_id} onChange={(event) => updateField("bed_id", event.target.value)} className={inputClass}>
                     <option value="">No bed selected</option>
-                    {beds.filter((bed) => text(bed.room_id) === form.room_id).map((bed) => <option key={text(bed.id)} value={text(bed.id)}>{firstText(bed, ["bed_number", "name"]) || text(bed.id)}</option>)}
+                    {beds.filter((bed) => text(bed.room_id) === form.room_id).map((bed) => <option key={text(bed.id)} value={text(bed.id)}>{firstText(bed, ["bed_number"]) || text(bed.id)}</option>)}
                   </select>
                 </Field>
 
@@ -1008,14 +1005,7 @@ export default function MaintenancePage() {
                   />
 
                   {existingPhoto && !photoFile && (
-                    <a
-                      href={maintenancePhotoUrl(existingPhoto)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-2 inline-block text-xs font-semibold text-indigo-700"
-                    >
-                      Open current photo
-                    </a>
+                    <PrivateStorageLinks title="Current photo" bucket={MAINTENANCE_PHOTO_BUCKET} references={[maintenancePhotoUrl(existingPhoto)]} />
                   )}
                 </Field>
 
@@ -1037,9 +1027,9 @@ export default function MaintenancePage() {
 
                 {editingId && (
                   <div className="md:col-span-2 xl:col-span-3">
-                    <MaintenancePhotoLinks title="Existing before photos" urls={photoUrls(requests.find((item) => item.id === editingId)?.before_photos)} />
-                    <MaintenancePhotoLinks title="Existing during photos" urls={photoUrls(requests.find((item) => item.id === editingId)?.during_photos)} />
-                    <MaintenancePhotoLinks title="Existing after photos" urls={photoUrls(requests.find((item) => item.id === editingId)?.after_photos)} />
+                    <PrivateStorageLinks title="Existing before photos" bucket={MAINTENANCE_PHOTO_BUCKET} references={photoUrls(requests.find((item) => item.id === editingId)?.before_photos)} />
+                    <PrivateStorageLinks title="Existing during photos" bucket={MAINTENANCE_PHOTO_BUCKET} references={photoUrls(requests.find((item) => item.id === editingId)?.during_photos)} />
+                    <PrivateStorageLinks title="Existing after photos" bucket={MAINTENANCE_PHOTO_BUCKET} references={photoUrls(requests.find((item) => item.id === editingId)?.after_photos)} />
                   </div>
                 )}
 
@@ -1253,7 +1243,7 @@ export default function MaintenancePage() {
                         <td className="px-5 py-4 text-sm text-slate-700">
                           <p>Room: {roomNumber(room)}</p>
                           <p className="mt-1 text-xs text-slate-500">
-                            Bed: {firstText(bed, ["bed_number", "name"]) || "Not linked"}
+                            Bed: {firstText(bed, ["bed_number"]) || "Not linked"}
                           </p>
                         </td>
 
@@ -1263,7 +1253,7 @@ export default function MaintenancePage() {
 
                         <td className="px-5 py-4">
                           <p className="font-semibold text-slate-900">
-                            {request.title || request.complaint_description || "Maintenance Request"}
+                            {request.title || "Maintenance Request"}
                           </p>
                           <p className="mt-1 text-xs text-slate-500">
                             {request.category}
@@ -1500,9 +1490,4 @@ function StatCard({
       </p>
     </article>
   );
-}
-
-function MaintenancePhotoLinks({ title, urls }: { title: string; urls: string[] }) {
-  if (urls.length === 0) return null;
-  return <div className="mt-3 flex flex-wrap items-center gap-2"><span className="text-xs font-semibold text-slate-500">{title}:</span>{urls.map((url, index) => <a key={`${url}-${index}`} href={url} target="_blank" rel="noreferrer" className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-indigo-700">Photo {index + 1}</a>)}</div>;
 }

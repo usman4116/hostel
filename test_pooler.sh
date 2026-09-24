@@ -1,10 +1,18 @@
-REGIONS="us-east-1 us-west-1 us-west-2 eu-west-1 eu-west-2 eu-west-3 eu-central-1 ap-southeast-1 ap-northeast-1 ap-northeast-2 ap-southeast-2 ap-south-1 sa-east-1"
-for r in $REGIONS; do
-  echo "Testing $r..."
-  psql "postgresql://postgres.afteoovednmgpmvrgtrp:usman0411051122@aws-0-$r.pooler.supabase.com:5432/postgres" -c "SELECT 1;" > /dev/null 2>&1
-  if [ $? -eq 0 ]; then
-    echo "SUCCESS: $r"
-    exit 0
-  fi
-done
-echo "FAILED ALL"
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+: "${SUPABASE_DB_URL:?Set SUPABASE_DB_URL to the intended non-production PostgreSQL connection string.}"
+: "${POOLER_CHECK_CONFIRMATION:?Set POOLER_CHECK_CONFIRMATION=CHECK_POOLER to continue.}"
+
+if [[ "$POOLER_CHECK_CONFIRMATION" != "CHECK_POOLER" ]]; then
+  echo "Pooler check guard failed."
+  exit 1
+fi
+
+command -v psql >/dev/null 2>&1 || {
+  echo "psql is required."
+  exit 1
+}
+
+psql --no-psqlrc --set ON_ERROR_STOP=1 "$SUPABASE_DB_URL" -c "SELECT 1;" >/dev/null
+echo "Pooler check completed for the configured target."

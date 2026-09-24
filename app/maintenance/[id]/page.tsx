@@ -18,7 +18,6 @@ type Request = {
   bed_id: string | null;
   title: string | null;
   description: string | null;
-  complaint_description: string | null;
   category: string | null;
   priority: string | null;
   status: string | null;
@@ -96,7 +95,7 @@ export default function MaintenanceDetailPage() {
         supabase
           .from("maintenance_requests")
           .select(
-            "id,request_number,resident_id,admission_id,room_id,bed_id,title,description,complaint_description,category,priority,status,assigned_to,estimated_cost,actual_cost,complaint_date,assigned_date,completion_date,completed_at,notes,photo_url,before_photos,during_photos,after_photos,created_at,updated_at"
+            "id,request_number,resident_id,admission_id,room_id,bed_id,title,description,category,priority,status,assigned_to,estimated_cost,actual_cost,complaint_date,assigned_date,completion_date,completed_at,notes,photo_url,before_photos,during_photos,after_photos,created_at,updated_at"
           )
           .eq("id", id)
           .maybeSingle(),
@@ -134,7 +133,7 @@ export default function MaintenanceDetailPage() {
         item.room_id
           ? supabase
               .from("rooms")
-              .select("id,room_number,building_name,block_name,floor_number")
+              .select("id,room_number,block_name,floor_number")
               .eq("id", item.room_id)
               .maybeSingle()
           : Promise.resolve({ data: null }),
@@ -495,7 +494,7 @@ export default function MaintenanceDetailPage() {
             label="Location"
             value={
               [
-                name(room, ["building_name"], ""),
+                name(room, ["block_name"], ""),
                 name(room, ["block_name"], ""),
                 name(room, ["floor_number"], ""),
               ]
@@ -547,7 +546,6 @@ export default function MaintenanceDetailPage() {
             label="Problem Description"
             value={
               request.description ||
-              request.complaint_description ||
               "No detailed description provided."
             }
           />

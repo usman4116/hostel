@@ -9,6 +9,9 @@ import {
   useMemo,
   useState,
 } from "react";
+import { billPaymentObligation, receiptPurposeError, combinedPaymentPreview, combinedPaymentAllocationError } from "@/lib/paymentObligations";
+import { paymentBillAmounts } from "@/lib/paymentAllocations";
+import { buildResidentFinancialSummary } from "@/lib/residentFinancialSummary";
 import { supabase } from "@/lib/supabase";
 import {
   resolveAuthenticatedResident,
@@ -22,7 +25,7 @@ import {
   requestEventNotification,
 } from "@/lib/notifications/client";
 import {
-  isSecurityDepositReceipt,
+  securityDepositAdmissionId,
   receiptPaymentMethod,
   residentReceiptNotes,
   securityDepositReceiptNotes,
@@ -31,6 +34,12 @@ import {
 type GenericRow = Record<string, unknown>;
 
 type Bill = {
+  admission_id: string;
+  rent_amount: number;
+  electricity_amount: number;
+  ac_amount: number;
+  other_amount: number;
+  discount_amount: number;
   id: string;
   resident_id: string;
   bill_number: string;
@@ -46,7 +55,7 @@ type Bill = {
 
 type Payment = {
   id: string;
-  bill_id: string;
+  bill_id: string | null;
   resident_id: string;
   payment_number: string | null;
   payment_date: string;
@@ -57,9 +66,11 @@ type Payment = {
   verified: boolean;
   notes: string | null;
   created_at: string;
+  allocations?: Array<{ bill_id: string; amount: number }>;
 };
 
 type Receipt = {
+  payment_id: string | null;
   id: string;
   bill_id: string | null;
   resident_id: string;
@@ -85,7 +96,7 @@ function normalized(value: unknown) {
 }
 
 function isPayableBill(status: unknown) {
-  return !["cancelled", "archived"].includes(normalized(status));
+  return !["cancelled", "archived", "draft", "pending approval"].includes(normalized(status));
 }
 
 function isSecurityDepositBill(bill: {
@@ -94,9 +105,7 @@ function isSecurityDepositBill(bill: {
   bill_number?: unknown;
 }) {
   return (
-    normalized(bill.bill_type) === "security deposit" ||
-    normalized(bill.billing_month) === "security deposit" ||
-    text(bill.bill_number).toUpperCase().startsWith("DEP-")
+    normalized(bill.bill_type) === "security deposit"
   );
 }
 
@@ -176,7 +185,9 @@ export default function ResidentPaymentsPage() {
     const verifiedByBill = new Map<string, number>();
     for (const payment of paymentRows) {
       if (normalized(payment.payment_status) !== "verified") continue;
-      verifiedByBill.set(payment.bill_id, roundMoney((verifiedByBill.get(payment.bill_id) ?? 0) + Number(payment.amount || 0)));
+      for (const allocation of paymentBillAmounts(payment, payment.allocations ?? [])) {
+        verifiedByBill.set(allocation.bill_id, roundMoney((verifiedByBill.get(allocation.bill_id) ?? 0) + Number(allocation.amount || 0)));
+      }
     }
 
     const calculatedBills = portalResult.data.bills.map((row) => {
@@ -185,6 +196,7 @@ export default function ResidentPaymentsPage() {
       const total = Number(row.total_amount || 0);
       const cancelled = normalized(row.bill_status) === "cancelled";
       return {
+        ...row,
         id,
         resident_id: text(row.resident_id),
         bill_number: firstText(row, ["bill_number"]) || "Bill",
@@ -215,12 +227,12 @@ export default function ResidentPaymentsPage() {
   }, [loadData]);
 
   const depositBill = useMemo(
-    () => bills.find(isSecurityDepositBill) ?? null,
-    [bills],
+    () => bills.find(bill => isSecurityDepositBill(bill) && bill.admission_id === admission?.id && isPayableBill(bill.bill_status)) ?? null,
+    [bills, admission],
   );
   const regularBills = useMemo(
-    () => bills.filter((bill) => !isSecurityDepositBill(bill)),
-    [bills],
+    () => bills.filter((bill) => !isSecurityDepositBill(bill) && bill.admission_id === admission?.id),
+    [bills, admission],
   );
 
   const selectedBill = useMemo(
@@ -228,20 +240,14 @@ export default function ResidentPaymentsPage() {
     [bills, selectedBillId],
   );
 
-  const depositOutstanding = useMemo(() => {
-    if (depositBill) {
-      return isPayableBill(depositBill.bill_status) ? depositBill.outstanding : 0;
-    }
-    return normalized(admission?.status) === "pending" &&
-      normalized(admission?.deposit_status) === "pending"
-      ? Math.max(roundMoney(Number(admission?.security_deposit ?? 0)), 0)
-      : 0;
-  }, [admission, depositBill]);
-
+  const financial = useMemo(() => buildResidentFinancialSummary({ admission, room: null, bed: null, bills, payments }), [admission, bills, payments]);
+  const selectedObligation = selectedBill ? billPaymentObligation(selectedBill, payments) : null;
+  const depositOutstanding = financial.depositBalance;
+  const combined = combinedPaymentPreview(financial);
   const pendingDepositReceipt = receipts.some(
     (receipt) =>
       ((depositBill && receipt.bill_id === depositBill.id) ||
-        (!receipt.bill_id && isSecurityDepositReceipt(receipt.notes))) &&
+        (!receipt.bill_id && securityDepositAdmissionId(receipt.notes) === admission?.id)) &&
       normalized(receipt.status) === "pending verification",
   );
 
@@ -253,41 +259,22 @@ export default function ResidentPaymentsPage() {
             .filter(
               (receipt) =>
                 ((depositBill && receipt.bill_id === depositBill.id) ||
-                  (!receipt.bill_id && isSecurityDepositReceipt(receipt.notes))) &&
+                  (!receipt.bill_id && securityDepositAdmissionId(receipt.notes) === admission?.id)) &&
                 normalized(receipt.status) === "verified",
             )
             .map((receipt) => [receipt.id, receipt]),
         ).values(),
       ),
-    [depositBill, receipts],
+    [depositBill, receipts, admission],
   );
 
-  const summary = useMemo(() => {
-    const operationalRegularBills = regularBills.filter((bill) => isPayableBill(bill.bill_status));
-    const verifiedRegularBillPayments = payments
-      .filter(
-        (payment) =>
-          normalized(payment.payment_status) === "verified" &&
-          (!depositBill || payment.bill_id !== depositBill.id),
-      )
-      .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
-    const verifiedDeposits =
-      verifiedDepositReceipts.reduce(
-        (sum, receipt) => sum + Number(receipt.amount || 0),
-        0,
-      ) + (depositBill ? depositBill.paid : 0);
-
-    return {
-      outstanding: operationalRegularBills.reduce(
-        (sum, bill) => sum + bill.outstanding,
-        depositOutstanding,
-      ),
-      pendingBills: operationalRegularBills.filter((bill) => bill.outstanding > 0).length,
-      overdueBills: operationalRegularBills.filter((bill) => normalized(bill.displayStatus) === "overdue").length,
-      verifiedPayments: verifiedRegularBillPayments + verifiedDeposits,
-      pendingReceipts: receipts.filter((receipt) => normalized(receipt.status) === "pending verification").length,
-    };
-  }, [depositBill, depositOutstanding, payments, receipts, regularBills, verifiedDepositReceipts]);
+  const summary = {
+    outstanding: financial.totalOutstanding,
+    pendingBills: regularBills.filter(bill => isPayableBill(bill.bill_status) && bill.outstanding > 0).length,
+    overdueBills: regularBills.filter(bill => bill.displayStatus === "Overdue").length,
+    verifiedPayments: financial.appliedPayments,
+    pendingReceipts: receipts.filter(receipt => receipt.status === "Pending Verification" && bills.some(bill => bill.id === receipt.bill_id && bill.admission_id === admission?.id)).length,
+  };
 
   const paymentHistoryRows = useMemo(() => {
     const entries: { id: string; sortDate: string; row: React.ReactNode[] }[] = [];
@@ -307,22 +294,15 @@ export default function ResidentPaymentsPage() {
           money(payment.amount),
           payment.payment_method || "Payment Method",
           payment.reference_number ?? "—",
-          <Status key="status" value="Verified" />,
-          "Verified",
+          <Status key="status" value={payment.payment_status} />,
+          payment.payment_status,
           payment.notes ?? "—",
         ],
       });
     }
     for (const receipt of verifiedDepositReceipts) {
-      if (
-        receipt.bill_id &&
-        payments.some(
-          (p) => p.bill_id === receipt.bill_id && normalized(p.payment_status) === "verified",
-        )
-      ) {
-        continue;
-      }
-      entries.push({
+      if (receipt.payment_id && payments.some(payment => payment.id === receipt.payment_id)) continue;
+entries.push({
         id: `deposit-${receipt.id}`,
         sortDate: receipt.created_at,
         row: [
@@ -332,8 +312,8 @@ export default function ResidentPaymentsPage() {
           money(receipt.amount),
           receiptPaymentMethod(receipt.notes) || "Payment Method",
           receipt.reference_number ?? "—",
-          <Status key="status" value="Verified" />,
-          "Verified",
+          <Status key="status" value="Pending Verification" />,
+          "Needs payment reconciliation",
           residentReceiptNotes(receipt.notes) || "—",
         ],
       });
@@ -351,10 +331,11 @@ export default function ResidentPaymentsPage() {
     const bill = bills.find((item) => item.id === billId);
     setSelectedBillId(billId);
     setAmount(
+      billId === "combined" ? String(combined.total) :
       billId === SECURITY_DEPOSIT_OPTION || (depositBill && billId === depositBill.id)
         ? String(depositOutstanding)
         : bill
-          ? String(bill.outstanding)
+          ? String(billPaymentObligation(bill, payments).amount)
           : "",
     );
   }
@@ -385,7 +366,6 @@ export default function ResidentPaymentsPage() {
   async function uploadReceipt(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (uploading) return;
-
     setUploading(true);
     setMessage("");
     setError("");
@@ -414,6 +394,52 @@ export default function ResidentPaymentsPage() {
       return;
     }
     const residentId = resolved.resident.id;
+    if (selectedBillId === "combined") {
+      const combinedError = combinedPaymentAllocationError(financial, submittedAmount);
+      const rentBill = regularBills.find((bill) => {
+        const obligation = billPaymentObligation(bill, payments);
+        return obligation.purpose === "Rent" && obligation.amount === financial.monthlyRentDue;
+      });
+      if (combinedError || !admission?.id || !depositBill || !rentBill) {
+        setError(combinedError || "Both current Rent and Security Deposit obligations must be available.");
+        setUploading(false);
+        return;
+      }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        setError("Your resident session could not be verified. Please sign in again.");
+        setUploading(false);
+        return;
+      }
+      if (!rentBill) {
+        setError("The current Rent obligation could not be identified. Refresh and try again.");
+        setUploading(false);
+        return;
+      }
+      const formData = new FormData();
+      formData.set("file", selectedFile);
+      formData.set("admissionId", text(admission.id));
+      formData.set("rentBillId", rentBill.id);
+      formData.set("depositBillId", depositBill.id);
+      formData.set("amount", String(submittedAmount));
+      formData.set("paymentMethod", paymentMethod.trim());
+      formData.set("referenceNumber", referenceNumber.trim());
+      formData.set("notes", notes.trim());
+      const response = await fetch("/api/resident-portal/combined-payment", { method: "POST", headers: { Authorization: `Bearer ${session.access_token}` }, body: formData });
+      const payload = await response.json().catch(() => null) as { message?: string; error?: string } | null;
+      if (!response.ok) {
+        setError(payload?.error || "The combined payment could not be submitted.");
+        setUploading(false);
+        return;
+      }
+      setMessage(payload?.message || "Combined payment submitted for verification.");
+      setSelectedBillId(""); setAmount(""); setPaymentMethod(""); setReferenceNumber(""); setNotes(""); setSelectedFile(null);
+      const input = document.getElementById("payment-receipt-file") as HTMLInputElement | null;
+      if (input) input.value = "";
+      await loadData();
+      setUploading(false);
+      return;
+    }
     if (selectedBillId === SECURITY_DEPOSIT_OPTION) {
       const {
         data: { session },
@@ -427,6 +453,8 @@ export default function ResidentPaymentsPage() {
 
       const formData = new FormData();
       formData.set("file", selectedFile);
+      formData.set("admissionId", text(admission?.id));
+      formData.set("amount", String(submittedAmount));
       formData.set("paymentMethod", paymentMethod.trim());
       formData.set("referenceNumber", referenceNumber.trim());
       formData.set("notes", notes.trim());
@@ -466,14 +494,19 @@ export default function ResidentPaymentsPage() {
 
     const { data: currentBill, error: billError } = await supabase
       .from("bills")
-      .select("id, resident_id, total_amount, bill_status")
+      .select("id, resident_id, admission_id, total_amount, bill_status, bill_type, rent_amount, electricity_amount, ac_amount, other_amount, discount_amount")
       .eq("id", selectedBillId)
       .eq("resident_id", residentId)
       .maybeSingle();
-    if (billError || !currentBill) {
+    if (billError || !currentBill || currentBill.admission_id !== admission?.id) {
       setError("The selected bill could not be verified. Refresh and try again.");
       setUploading(false);
       return;
+    }
+    const { data: currentAdmission, error: admissionError } = await supabase.from("admissions")
+      .select("id").eq("id", currentBill.admission_id).eq("resident_id", residentId).in("status", ["Pending", "Active"]).maybeSingle();
+    if (admissionError || !currentAdmission) {
+      setError("This admission is no longer current. Refresh before submitting."); setUploading(false); return;
     }
     if (!isPayableBill(currentBill.bill_status)) {
       setError("Receipts cannot be submitted for a cancelled or archived bill.");
@@ -483,7 +516,7 @@ export default function ResidentPaymentsPage() {
 
     const { data: verifiedRows, error: paymentError } = await supabase
       .from("payments")
-      .select("amount")
+      .select("amount, bill_id, payment_status")
       .eq("resident_id", residentId)
       .eq("bill_id", selectedBillId)
       .eq("payment_status", "Verified");
@@ -500,6 +533,8 @@ export default function ResidentPaymentsPage() {
       return;
     }
 
+    const purposeError = receiptPurposeError(currentBill, verifiedRows ?? [], submittedAmount, selectedObligation?.purpose ?? "");
+    if (purposeError) { setError(purposeError); setUploading(false); return; }
     const reference = referenceNumber.trim();
     if (reference) {
       const [paymentReference, receiptReference] = await Promise.all([
@@ -529,20 +564,19 @@ export default function ResidentPaymentsPage() {
       return;
     }
 
-    const { data: urlData } = supabase.storage.from("payment-receipts").getPublicUrl(filePath);
     const isDepositSubmission =
       selectedBillId === SECURITY_DEPOSIT_OPTION ||
       (depositBill && selectedBillId === depositBill.id);
     const receiptNotes =
       isDepositSubmission && admission?.id
         ? securityDepositReceiptNotes(text(admission.id), paymentMethod.trim(), notes.trim())
-        : [`Payment method: ${paymentMethod.trim()}`, notes.trim()].filter(Boolean).join("\n");
+        : [`Payment purpose: ${selectedObligation?.purpose}`, `Admission ID: ${currentBill.admission_id}`, `Payment method: ${paymentMethod.trim()}`, notes.trim()].filter(Boolean).join("\n");
     const { data: insertedReceipt, error: insertError } = await supabase
       .from("payment_receipts")
       .insert({
         resident_id: residentId,
         bill_id: selectedBillId,
-        receipt_url: urlData.publicUrl,
+        receipt_url: filePath,
         original_file_name: selectedFile.name,
         reference_number: reference || null,
         amount: submittedAmount,
@@ -592,25 +626,28 @@ export default function ResidentPaymentsPage() {
         {(message || error) && <section className={`rounded-2xl border px-4 py-3 text-sm font-medium ${error ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>{error || message}</section>}
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-          {[['Total Outstanding', money(summary.outstanding)], ['Security Deposit Outstanding', money(depositOutstanding)], ['Current Pending Bills', String(summary.pendingBills)], ['Overdue Bills', String(summary.overdueBills)], ['Verified Payments', money(summary.verifiedPayments)], ['Pending Verification', String(summary.pendingReceipts)]].map(([label, value]) => <article key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-sm text-slate-500">{label}</p><p className="mt-2 text-2xl font-bold">{value}</p></article>)}
+          {[['Rent Due', money(financial.monthlyRentDue)], ['Total Payable (Rent + Security Deposit)', money(combined.total)], ['Account Outstanding (all charges)', money(summary.outstanding)], ['Security Deposit Due', money(depositOutstanding)], ['Current Pending Bills', String(summary.pendingBills)], ['Overdue Bills', String(summary.overdueBills)], ['Verified Payments', money(summary.verifiedPayments)], ['Pending Verification', String(summary.pendingReceipts)]].map(([label, value]) => <article key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-sm text-slate-500">{label}</p><p className="mt-2 text-2xl font-bold">{value}</p></article>)}
         </section>
 
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-xl font-bold">Upload Payment Receipt</h2>
           <p className="mt-1 text-sm text-slate-500">PDF, JPEG, or PNG; maximum 5 MB. Submission remains pending until verified.</p>
+          {selectedBillId === "combined" && <p className="mt-4 text-amber-800">Rent: {money(financial.monthlyRentDue)}. Security Deposit: {money(depositOutstanding)}. Combined payments are not available yet; submit each separately.</p>}
+          {!regularBills.length && financial.monthlyRentDue > 0 && <p className="mt-4">Rent is due. Contact management to issue your rent bill before submitting payment.</p>}
           <form onSubmit={uploadReceipt} className="mt-5 grid gap-4 md:grid-cols-2">
-            <label><span className="mb-2 block text-sm font-semibold">Payment For *</span><select required value={selectedBillId} onChange={(event) => selectBill(event.target.value)} disabled={loading || uploading} className={inputClass}><option value="">Select an outstanding obligation</option>{depositOutstanding > 0 && <option value={depositBill ? depositBill.id : SECURITY_DEPOSIT_OPTION} disabled={pendingDepositReceipt}>{depositBill ? `Security Deposit (${depositBill.bill_number})` : "Security Deposit"} — {money(depositOutstanding)}{pendingDepositReceipt ? " — Pending Verification" : ""}</option>}{regularBills.filter((bill) => isPayableBill(bill.bill_status) && bill.outstanding > 0).map((bill) => <option key={bill.id} value={bill.id}>{bill.bill_number} — {monthLabel(bill.billing_month)} — {money(bill.outstanding)}</option>)}</select></label>
-            <label><span className="mb-2 block text-sm font-semibold">Amount *</span><input required type="number" min="0.01" step="0.01" max={selectedBillId === SECURITY_DEPOSIT_OPTION || selectedBillId === depositBill?.id ? depositOutstanding : selectedBill?.outstanding} value={amount} onChange={(event) => setAmount(event.target.value)} readOnly={selectedBillId === SECURITY_DEPOSIT_OPTION || selectedBillId === depositBill?.id} disabled={uploading || (!selectedBill && selectedBillId !== SECURITY_DEPOSIT_OPTION)} className={inputClass} /></label>
+            <label><span className="mb-2 block text-sm font-semibold">Payment For *</span><select required value={selectedBillId} onChange={(event) => selectBill(event.target.value)} disabled={loading || uploading} className={inputClass}><option value="">Select an outstanding obligation</option>{financial.monthlyRentDue > 0 && !regularBills.some(bill => isPayableBill(bill.bill_status)) && <option disabled>Rent ? {money(financial.monthlyRentDue)} due (awaiting bill)</option>}{depositOutstanding > 0 && <option value={depositBill ? depositBill.id : SECURITY_DEPOSIT_OPTION} disabled={pendingDepositReceipt || !depositBill}>{depositBill ? `Security Deposit (${depositBill.bill_number})` : "Security Deposit"} — {money(depositOutstanding)}{pendingDepositReceipt ? " — Pending Verification" : ""}</option>}{regularBills.filter((bill) => isPayableBill(bill.bill_status) && bill.outstanding > 0).map((bill) => <option key={bill.id} value={bill.id}>{bill.bill_number} — {monthLabel(bill.billing_month)} — {money(bill.outstanding)}</option>)}{financial.monthlyRentDue > 0 && depositOutstanding > 0 && <option value="combined">Rent + Security Deposit ? {money(combined.total)} total due</option>}</select></label>
+            <label><span className="mb-2 block text-sm font-semibold">Amount *</span><input required type="number" min="0.01" step="0.01" max={selectedBillId === SECURITY_DEPOSIT_OPTION || selectedBillId === depositBill?.id ? depositOutstanding : selectedObligation?.amount} value={amount} onChange={(event) => setAmount(event.target.value)} readOnly={selectedBillId === "combined"} disabled={uploading || (!selectedBill && selectedBillId !== SECURITY_DEPOSIT_OPTION && selectedBillId !== "combined")} className={inputClass} /></label>
             <label><span className="mb-2 block text-sm font-semibold">Payment Method *</span><input required value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)} disabled={uploading} className={inputClass} placeholder="Cash deposit, bank transfer, card, etc." /></label>
             <label><span className="mb-2 block text-sm font-semibold">Reference Number</span><input value={referenceNumber} onChange={(event) => setReferenceNumber(event.target.value)} disabled={uploading} className={inputClass} placeholder="Transaction reference" /></label>
             <label className="md:col-span-2"><span className="mb-2 block text-sm font-semibold">Receipt File *</span><input id="payment-receipt-file" required type="file" accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png" onChange={handleFileChange} disabled={uploading} className={inputClass} /></label>
             <label className="md:col-span-2"><span className="mb-2 block text-sm font-semibold">Notes</span><textarea value={notes} onChange={(event) => setNotes(event.target.value)} disabled={uploading} className={`${inputClass} min-h-24`} /></label>
-            <div className="md:col-span-2"><button type="submit" disabled={uploading || loading} className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">{uploading ? "Submitting..." : "Submit for Verification"}</button></div>
+            <p className="md:col-span-2 text-sm">Purpose: {selectedBillId === "combined" ? "Rent + Security Deposit" : selectedBillId === depositBill?.id ? "Security Deposit" : selectedBill ? selectedObligation?.purpose : "Not selected"} ? Amount: {money(amount)} ? Method: {paymentMethod || "Not selected"} ? Reference: {referenceNumber || "None"} ? Proof: {selectedFile?.name || "Not selected"}</p>
+            <div className="md:col-span-2"><button type="submit" disabled={uploading || loading || !selectedBill && selectedBillId !== "combined" && selectedBillId !== SECURITY_DEPOSIT_OPTION} className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">{uploading ? "Submitting..." : "Submit for Verification"}</button></div>
           </form>
         </section>
 
-        <HistoryTable title="Payment History" headers={["Payment", "Type / Purpose", "Date", "Amount", "Method", "Reference", "Status", "Verification", "Notes"]} loading={loading} empty="No payment history found." rows={paymentHistoryRows} />
-        <HistoryTable title="Receipt History" headers={["Date", "Payment For", "Amount", "Reference", "Status", "Notes"]} loading={loading} empty="No receipt submissions found." rows={receipts.map((receipt) => { const bill = bills.find((item) => item.id === receipt.bill_id); const depositReceipt = (!receipt.bill_id && isSecurityDepositReceipt(receipt.notes)) || (bill && isSecurityDepositBill(bill)); return [receipt.created_at.slice(0, 10), depositReceipt ? `Security Deposit${bill ? ` (${bill.bill_number})` : ""}` : bill?.bill_number ?? "Historical bill", money(receipt.amount), receipt.reference_number ?? "—", <Status key="status" value={receipt.status} />, residentReceiptNotes(receipt.notes) || "—"]; })} />
+        <HistoryTable title="Payment History (all admissions)" headers={["Payment", "Type / Purpose", "Date", "Amount", "Method", "Reference", "Status", "Verification", "Notes"]} loading={loading} empty="No payment history found." rows={paymentHistoryRows} />
+        <HistoryTable title="Receipt History" headers={["Date", "Payment For", "Amount", "Reference", "Status", "Notes"]} loading={loading} empty="No receipt submissions found." rows={receipts.map((receipt) => { const bill = bills.find((item) => item.id === receipt.bill_id); const depositReceipt = (!receipt.bill_id && securityDepositAdmissionId(receipt.notes) === admission?.id) || (bill && isSecurityDepositBill(bill)); return [receipt.created_at.slice(0, 10), depositReceipt ? `Security Deposit${bill ? ` (${bill.bill_number})` : ""}` : bill?.bill_number ?? "Historical bill", money(receipt.amount), receipt.reference_number ?? "—", <Status key="status" value={receipt.status} />, residentReceiptNotes(receipt.notes) || "—"]; })} />
       </div>
     </main>
   );

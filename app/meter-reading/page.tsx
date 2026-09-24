@@ -107,7 +107,9 @@ export default function MeterReadingPage() {
         }
       }
 
-      const readingsRes = await fetch("/api/meter-reading");
+      const token = await getAccessToken();
+      const readingsRes = await fetch("/api/meter-reading", { headers: { Authorization: `Bearer ${token}` } });
+      if (!readingsRes.ok) throw new Error("Meter readings could not be loaded.");
       if (readingsRes.ok) {
         const readingsJson = await readingsRes.json();
         setReadings(readingsJson.readings ?? []);

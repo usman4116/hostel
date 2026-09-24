@@ -1,5 +1,6 @@
 "use client";
 
+import { requireContractStaff, reviewContractSignature } from "@/lib/contractActions";
 import Link from "next/link";
 import {
   FormEvent,
@@ -81,14 +82,11 @@ type AdmissionContract = {
   id: string;
   admission_id: string | null;
   status: string | null;
-  contract_status: string | null;
-  resident_signature: string | null;
   resident_signature_url: string | null;
   resident_signature_status: string | null;
   signed_by_resident: boolean | null;
   signed_at: string | null;
   contract_content: string | null;
-  terms: string | null;
 };
 
 type AdmissionForm = {
@@ -198,7 +196,7 @@ export default function AdmissionsPage() {
       supabase
         .from("contracts")
         .select(
-          "id, admission_id, status, contract_status, resident_signature, resident_signature_url, resident_signature_status, signed_by_resident, signed_at, contract_content, terms",
+          "id, admission_id, status, resident_signature_url, resident_signature_status, signed_by_resident, signed_at, contract_content",
         )
         .order("created_at", { ascending: false }),
     ]);
@@ -524,7 +522,7 @@ export default function AdmissionsPage() {
       expected_leaving_date: form.expected_leaving_date || null,
       monthly_rent: Number(form.monthly_rent) || 0,
       security_deposit: Number(form.security_deposit) || 0,
-      deposit_status: form.deposit_status,
+      deposit_status: previousAdmission.deposit_status,
       notice_period_days: Number(form.notice_period_days) || 30,
       status: nextStatus,
       notes: form.notes.trim() || null,
@@ -697,7 +695,7 @@ export default function AdmissionsPage() {
       supabase
         .from("contracts")
         .select(
-          "id, admission_id, status, contract_status, resident_signature, resident_signature_url, resident_signature_status, signed_by_resident, signed_at, contract_content, terms",
+          "id, admission_id, status, resident_signature_url, resident_signature_status, signed_by_resident, signed_at, contract_content",
         )
         .eq("admission_id", admission.id)
         .order("created_at", { ascending: false })
@@ -746,6 +744,7 @@ export default function AdmissionsPage() {
     setError("");
 
     try {
+      await requireContractStaff();
       const context = await loadLifecycleContext(admissionId);
       if (context.admission.status !== "Pending") {
         throw new Error("Only a Pending admission can be activated.");
@@ -762,7 +761,7 @@ export default function AdmissionsPage() {
       if (!context.contract) {
         throw new Error("A contract linked to this admission is required before activation.");
       }
-      if (!isContractSignedAndAccepted(context.contract)) {
+      if (context.contract.status !== "Pending Signature" || !isContractSignedAndAccepted(context.contract)) {
         throw new Error(
           "The resident signature must be submitted and approved before activation.",
         );
@@ -794,23 +793,23 @@ export default function AdmissionsPage() {
       }
 
       const previousContractStatus = context.contract.status;
-      const previousLegacyContractStatus = context.contract.contract_status;
       let contractActivation = supabase
         .from("contracts")
         .update({
           status: "Active",
-          contract_status: "Active",
           updated_at: new Date().toISOString(),
         })
         .eq("id", context.contract.id)
+        .eq("admission_id", admissionId)
+        .eq("resident_signature_url", context.contract.resident_signature_url)
+        .eq("signed_at", context.contract.signed_at)
+        .eq("signed_by_resident", true)
+        .eq("contract_content", context.contract.contract_content)
         .eq("resident_signature_status", "Approved");
 
       contractActivation = previousContractStatus
         ? contractActivation.eq("status", previousContractStatus)
         : contractActivation.is("status", null);
-      contractActivation = previousLegacyContractStatus
-        ? contractActivation.eq("contract_status", previousLegacyContractStatus)
-        : contractActivation.is("contract_status", null);
 
       const { data: activatedContract, error: contractActivateError } =
         await contractActivation
@@ -832,6 +831,10 @@ export default function AdmissionsPage() {
         .from("admissions")
         .update({ status: "Active", updated_at: new Date().toISOString() })
         .eq("id", admissionId)
+        .eq("resident_id", context.admission.resident_id)
+        .eq("room_id", context.admission.room_id)
+        .eq("bed_id", context.admission.bed_id)
+        .eq("deposit_status", "Held")
         .eq("status", "Pending")
         .select("id")
         .maybeSingle();
@@ -841,12 +844,10 @@ export default function AdmissionsPage() {
           .from("contracts")
           .update({
             status: previousContractStatus,
-            contract_status: previousLegacyContractStatus,
             updated_at: new Date().toISOString(),
           })
           .eq("id", context.contract.id)
           .eq("status", "Active")
-          .eq("contract_status", "Active")
           .select("id")
           .maybeSingle();
 
@@ -888,12 +889,10 @@ export default function AdmissionsPage() {
               .from("contracts")
               .update({
                 status: previousContractStatus,
-                contract_status: previousLegacyContractStatus,
                 updated_at: new Date().toISOString(),
               })
               .eq("id", context.contract.id)
               .eq("status", "Active")
-              .eq("contract_status", "Active")
               .select("id")
               .maybeSingle(),
           ]);
@@ -957,7 +956,7 @@ export default function AdmissionsPage() {
       const { data: currentContract, error: contractError } = await supabase
         .from("contracts")
         .select(
-          "id, admission_id, status, contract_status, resident_signature, resident_signature_url, resident_signature_status, signed_by_resident, signed_at, contract_content, terms",
+          "id, admission_id, status, resident_signature_url, resident_signature_status, signed_by_resident, signed_at, contract_content",
         )
         .eq("admission_id", admissionId)
         .order("created_at", { ascending: false })
@@ -976,7 +975,7 @@ export default function AdmissionsPage() {
       }
 
       if (
-        (currentContract.status || currentContract.contract_status) !==
+        (currentContract.status) !==
         "Pending Signature"
       ) {
         throw new Error(
@@ -988,8 +987,7 @@ export default function AdmissionsPage() {
         currentContract.resident_signature_status || "Pending";
 
       const hasStoredSignature = Boolean(
-        (currentContract.resident_signature_url ||
-          currentContract.resident_signature) &&
+        (currentContract.resident_signature_url) &&
           currentContract.signed_by_resident &&
           currentContract.signed_at,
       );
@@ -1003,39 +1001,7 @@ export default function AdmissionsPage() {
         );
       }
 
-      let contractApproval = supabase
-        .from("contracts")
-        .update({
-          resident_signature_status: "Approved",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", currentContract.id)
-        .eq(
-          "resident_signature_status",
-          currentContract.resident_signature_status,
-        );
-
-      contractApproval = currentContract.status
-        ? contractApproval.eq("status", currentContract.status)
-        : contractApproval.is("status", null);
-      contractApproval = currentContract.contract_status
-        ? contractApproval.eq("contract_status", currentContract.contract_status)
-        : contractApproval.is("contract_status", null);
-
-      const { data: approved, error: approveError } = await contractApproval
-        .select("id")
-        .maybeSingle();
-
-      if (approveError || !approved) {
-        throw new Error(
-          approveError
-            ? getSupabaseErrorMessage(
-                approveError,
-                "Unable to approve the resident signature.",
-              )
-            : "The signature status changed before approval completed. Refresh and try again.",
-        );
-      }
+      await reviewContractSignature(currentContract.id, "Approved");
 
       const notificationResult = await requestEventNotification(
         "contract_approved",
@@ -1914,7 +1880,7 @@ function isCurrentAdmissionStatus(status: AdmissionStatus) {
 }
 
 function isAdmissionRoomStatus(status: string | null) {
-  return status === "Available" || status === "Active";
+  return ["Available", "Partially Occupied", "Occupied"].includes(status ?? "");
 }
 
 async function releaseBedWhenUnallocated(bedId: string) {

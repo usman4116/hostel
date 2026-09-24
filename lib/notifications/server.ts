@@ -1,6 +1,7 @@
 import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { gmailSenderConfigured, sendGmailEmail } from "@/lib/email/gmailClient";
 import { securityDepositAdmissionId } from "@/lib/paymentReceiptPurpose";
 import type { NotificationChannel, NotificationEventType, NotificationRequestOptions, NotificationRequestResult } from "@/lib/notifications/types";
 
@@ -132,11 +133,11 @@ async function resolveAdmission(entityId: string) {
   const [{ data: room }, { data: bed }, { data: contract }, resident] = await Promise.all([
     supabaseAdmin.from("rooms").select("room_number").eq("id", admission.room_id).maybeSingle(),
     supabaseAdmin.from("beds").select("bed_number").eq("id", admission.bed_id).maybeSingle(),
-    supabaseAdmin.from("contracts").select("status, contract_status").eq("admission_id", admission.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    supabaseAdmin.from("contracts").select("status").eq("admission_id", admission.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     loadResident(text(admission.resident_id)),
   ]);
   if (!contract) throw new Error("event_unavailable");
-  const values = [text(resident.full_name) || "Resident", text(room?.room_number) || "—", text(bed?.bed_number) || "—", displayDate(admission.admission_date), money(admission.monthly_rent), money(admission.security_deposit), text(admission.status) || "Pending", text(contract.status || contract.contract_status) || "Pending Signature"];
+  const values = [text(resident.full_name) || "Resident", text(room?.room_number) || "—", text(bed?.bed_number) || "—", displayDate(admission.admission_date), money(admission.monthly_rent), money(admission.security_deposit), text(admission.status) || "Pending", text(contract.status) || "Pending Signature"];
   return message("admission_created", entityId, resident, "Your StayHub admission and contract are ready", [
     `Admission created for: ${values[0]}`,
     `Room / Bed: ${values[1]} / ${values[2]}`,
@@ -208,7 +209,7 @@ async function resolveReceipt(eventType: "receipt_submitted" | "payment_verified
 
 async function resolveContract(entityId: string) {
   const { data: contract, error } = await supabaseAdmin.from("contracts")
-    .select("id, resident_id, admission_id, resident_signature_status, status, contract_status, updated_at")
+    .select("id, resident_id, admission_id, resident_signature_status, status, updated_at")
     .eq("id", entityId).maybeSingle();
   if (error || !contract || !recent(contract.updated_at) || normalized(contract.resident_signature_status) !== "approved") throw new Error("event_unavailable");
   const [{ data: admission }, resident] = await Promise.all([
@@ -217,18 +218,19 @@ async function resolveContract(entityId: string) {
   ]);
   if (!admission) throw new Error("event_unavailable");
   const active = normalized(admission.status) === "active";
-  const state = active ? "Your admission is Active." : normalized(admission.deposit_status) !== "received" ? "Your admission remains Pending until the security deposit is received." : "Your admission remains Pending while activation is finalized.";
-  const values = [text(resident.full_name) || "Resident", text(contract.status || contract.contract_status) || "Approved", text(admission.deposit_status) || "Pending", text(admission.status) || "Pending", state];
+  const state = active ? "Your admission is Active." : normalized(admission.deposit_status) !== "held" ? "Your admission remains Pending until the security deposit is received." : "Your admission remains Pending while activation is finalized.";
+  const values = [text(resident.full_name) || "Resident", text(contract.status) || "Approved", text(admission.deposit_status) || "Pending", text(admission.status) || "Pending", state];
   return message("contract_approved", entityId, resident, "Your StayHub contract signature was approved", ["Your resident contract signature has been approved by hostel administration.", `Deposit status: ${values[2]}`, `Admission status: ${values[3]}`, state], values);
 }
 
 async function resolveNotice(entityId: string, requestedRecipientIds: string[]) {
   const { data: notice, error } = await supabaseAdmin
     .from("notices")
-    .select("id, title, description, audience, resident_id, status, publish_date, created_at")
+    .select("id, title, description, audience, resident_id, room_id, status, publish_date, expiry_date, created_at")
     .eq("id", entityId)
     .maybeSingle();
-  if (error || !notice || !recent(notice.created_at)) throw new Error("event_unavailable");
+  const today = new Date().toISOString().slice(0, 10);
+  if (error || !notice || !recent(notice.created_at) || notice.status !== "Published" || !notice.publish_date || notice.publish_date > today || (notice.expiry_date && notice.expiry_date < today)) throw new Error("event_unavailable");
 
   const audience = normalized(notice.audience);
   let recipientIds: string[] = [];
@@ -248,6 +250,14 @@ async function resolveNotice(entityId: string, requestedRecipientIds: string[]) 
     recipientIds = (data ?? []).map((row) => text(row.resident_id));
   } else if (audience === "specific resident" && notice.resident_id) {
     recipientIds = [text(notice.resident_id)];
+  } else if (audience === "specific room" && notice.room_id) {
+    const { data, error: admissionError } = await supabaseAdmin
+      .from("admissions")
+      .select("resident_id")
+      .eq("room_id", notice.room_id)
+      .eq("status", "Active");
+    if (admissionError) throw new Error("recipient_unavailable");
+    recipientIds = (data ?? []).map((row) => text(row.resident_id));
   }
 
   if (requestedRecipientIds.length) {
@@ -335,40 +345,105 @@ async function resolveEvent(eventType: NotificationEventType, entityId: string) 
 }
 
 async function sendEmail(event: EventMessage): Promise<ChannelDelivery> {
+  const gmailConfigured = gmailSenderConfigured();
   const apiKey = text(process.env.RESEND_API_KEY);
   const fromAddress = text(process.env.NOTIFICATION_EMAIL_FROM);
-  const configured = Boolean(apiKey && fromAddress);
+  const resendConfigured = Boolean(apiKey && fromAddress);
+  const configured = gmailConfigured || resendConfigured;
+
   if (!event.email) {
-    console.info("[notifications:diagnostic] Email delivery.", { configured, status: "skipped", errorMessage: "resident_email_missing" });
+    console.info("[notifications:diagnostic] Email delivery.", {
+      configured,
+      status: "skipped",
+      errorMessage: "resident_email_missing",
+    });
     return { status: "skipped", providerMessageId: null };
   }
-  if (!configured) {
-    console.info("[notifications:diagnostic] Email delivery.", { configured, status: "configuration_required", errorMessage: "resend_configuration_missing" });
+
+  const html = `<div style="font-family:Arial,sans-serif;white-space:pre-line">${escapeHtml(event.body)}</div>`;
+
+  if (gmailConfigured) {
+    try {
+      const result = await sendGmailEmail({
+        to: event.email,
+        subject: event.subject,
+        text: event.body,
+        html,
+      });
+
+      console.info("[notifications:diagnostic] Email delivery.", {
+        configured: true,
+        provider: "gmail",
+        status: "sent",
+        errorMessage: null,
+      });
+
+      return { status: "sent", providerMessageId: result.messageId };
+    } catch (error) {
+      console.warn("[notifications:diagnostic] Email delivery.", {
+        configured: true,
+        provider: "gmail",
+        status: "failed",
+        errorMessage: safeErrorMessage(error),
+      });
+      return { status: "failed", providerMessageId: null };
+    }
+  }
+
+  if (!resendConfigured) {
+    console.info("[notifications:diagnostic] Email delivery.", {
+      configured: false,
+      status: "configuration_required",
+      errorMessage: "email_configuration_missing",
+    });
     return { status: "configuration_required", providerMessageId: null };
   }
+
   const fromName = text(process.env.NOTIFICATION_EMAIL_FROM_NAME) || "StayHub";
+
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", "Idempotency-Key": `${event.eventKey}:email` },
-      body: JSON.stringify({ from: `${fromName} <${fromAddress}>`, to: [event.email], subject: event.subject, text: event.body, html: `<div style="font-family:Arial,sans-serif;white-space:pre-line">${escapeHtml(event.body)}</div>` }),
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": `${event.eventKey}:email`,
+      },
+      body: JSON.stringify({
+        from: `${fromName} <${fromAddress}>`,
+        to: [event.email],
+        subject: event.subject,
+        text: event.body,
+        html,
+      }),
     });
-    const payload = (await response.json().catch(() => null)) as { id?: unknown; message?: unknown } | null;
+
+    const payload = (await response.json().catch(() => null)) as {
+      id?: unknown;
+      message?: unknown;
+    } | null;
+
     console.info("[notifications:diagnostic] Email delivery.", {
-      configured,
+      configured: true,
+      provider: "resend",
       status: response.ok ? "sent" : "failed",
       errorMessage: response.ok ? null : text(payload?.message) || `resend_http_${response.status}`,
     });
+
     return {
       status: response.ok ? "sent" : "failed",
       providerMessageId: response.ok ? text(payload?.id) || null : null,
     };
   } catch (error) {
-    console.warn("[notifications:diagnostic] Email delivery.", { configured, status: "failed", errorMessage: safeErrorMessage(error) });
+    console.warn("[notifications:diagnostic] Email delivery.", {
+      configured: true,
+      provider: "resend",
+      status: "failed",
+      errorMessage: safeErrorMessage(error),
+    });
     return { status: "failed", providerMessageId: null };
   }
 }
-
 async function sendWhatsApp(eventType: NotificationEventType, event: EventMessage): Promise<ChannelDelivery> {
   const token = text(process.env.WHATSAPP_ACCESS_TOKEN);
   const phoneId = text(process.env.WHATSAPP_PHONE_NUMBER_ID);

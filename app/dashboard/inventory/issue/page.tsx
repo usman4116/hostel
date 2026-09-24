@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { bigintId } from "@/lib/canonical";
 import { supabase } from "@/lib/supabase";
 
 type AssignType = "Room" | "Bed" | "Resident" | "Staff";
@@ -50,9 +51,10 @@ export default function InventoryIssuePage() {
   const [successMessage, setSuccessMessage] = useState("");
 
   const selectedInventory = useMemo(() => {
+    if (!inventoryId) return null;
     return (
       inventoryItems.find(
-        (item) => item.id === Number(inventoryId)
+        (item) => String(item.id) === bigintId(inventoryId)
       ) ?? null
     );
   }, [inventoryId, inventoryItems]);
@@ -64,8 +66,8 @@ export default function InventoryIssuePage() {
     if (type === "Room") {
       return `Room ${
         record.room_number ??
-        record.room_name ??
-        record.name ??
+
+
         record.id
       }`;
     }
@@ -73,24 +75,21 @@ export default function InventoryIssuePage() {
     if (type === "Bed") {
       return `Bed ${
         record.bed_number ??
-        record.bed_name ??
-        record.name ??
+
+
         record.id
       }`;
     }
 
     const fullName =
       record.full_name ??
-      record.name ??
-      [record.first_name, record.last_name]
-        .filter(Boolean)
-        .join(" ") ??
+
       `${type} ${record.id}`;
 
     const extra =
       type === "Resident"
         ? record.phone
-        : record.designation ?? record.role;
+        : record.designation;
 
     return extra
       ? `${fullName} - ${extra}`
@@ -265,22 +264,22 @@ export default function InventoryIssuePage() {
 
           room_id:
             assignType === "Room"
-              ? Number(assignedToId)
+              ? assignedToId
               : null,
 
           bed_id:
             assignType === "Bed"
-              ? Number(assignedToId)
+              ? assignedToId
               : null,
 
           resident_id:
             assignType === "Resident"
-              ? Number(assignedToId)
+              ? assignedToId
               : null,
 
           staff_id:
             assignType === "Staff"
-              ? Number(assignedToId)
+              ? bigintId(assignedToId)
               : null,
 
           quantity: issueQuantity,

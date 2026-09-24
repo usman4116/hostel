@@ -8,16 +8,12 @@ import {
 } from "react";
 
 import Link from "next/link";
+import { REPORT_COLUMNS, joinReportRows, reportLookups, reportDate } from "@/lib/reportData";
 import { supabase } from "@/lib/supabase";
 
 type GenericRecord = {
-  id?: number;
-  [key: string]:
-    | string
-    | number
-    | boolean
-    | null
-    | undefined;
+  id?: string | number;
+  [key: string]: unknown;
 };
 
 type ReportData = {
@@ -173,14 +169,7 @@ const getRecordDate = (
   return getStringValue(
     record,
     [
-      "created_at",
-      "admission_date",
-      "bills_date",
-      "bill_date",
-      "payment_date",
-      "request_date",
-      "purchase_date",
-      "date",
+      "report_date",
     ]
   );
 };
@@ -229,45 +218,46 @@ export default function ReportsPage() {
       paymentsResponse,
       maintenanceResponse,
       inventoryResponse,
+      inventoryCategoriesResponse,
     ] = await Promise.all([
       supabase
         .from("residents")
-        .select("*")
+        .select(REPORT_COLUMNS.residents)
         .order("id", {
           ascending: false,
         }),
 
       supabase
         .from("rooms")
-        .select("*")
+        .select(REPORT_COLUMNS.rooms)
         .order("id", {
           ascending: false,
         }),
 
       supabase
         .from("beds")
-        .select("*")
+        .select(REPORT_COLUMNS.beds)
         .order("id", {
           ascending: false,
         }),
 
       supabase
         .from("admissions")
-        .select("*")
+        .select(REPORT_COLUMNS.admissions)
         .order("id", {
           ascending: false,
         }),
 
       supabase
         .from("bills")
-        .select("*")
+        .select(REPORT_COLUMNS.bills)
         .order("id", {
           ascending: false,
         }),
 
       supabase
         .from("payments")
-        .select("*")
+        .select(REPORT_COLUMNS.payments)
         .order("id", {
           ascending: false,
         }),
@@ -276,17 +266,18 @@ export default function ReportsPage() {
         .from(
           "maintenance_requests"
         )
-        .select("*")
+        .select(REPORT_COLUMNS.maintenance_requests)
         .order("id", {
           ascending: false,
         }),
 
       supabase
         .from("inventory")
-        .select("*")
+        .select(REPORT_COLUMNS.inventory)
         .order("id", {
           ascending: false,
         }),
+      supabase.from("inventory_categories").select(REPORT_COLUMNS.inventory_categories),
     ]);
 
     const responses = [
@@ -298,6 +289,7 @@ export default function ReportsPage() {
       paymentsResponse,
       maintenanceResponse,
       inventoryResponse,
+      inventoryCategoriesResponse,
     ];
 
     const firstError =
@@ -307,43 +299,38 @@ export default function ReportsPage() {
       )?.error;
 
     if (firstError) {
-      setErrorMessage(
-        firstError.message
-      );
+      setErrorMessage(firstError.message);
+      setReportData(emptyReportData);
+      setLoading(false);
+      return;
     }
-
+    const categoryNames = new Map((inventoryCategoriesResponse.data ?? []).map(row => [String(row.id), row.name]));
+    const lookups = reportLookups({ residents: residentsResponse.data ?? [], rooms: roomsResponse.data ?? [], beds: bedsResponse.data ?? [], admissions: admissionsResponse.data ?? [], bills: billsResponse.data ?? [] });
     setReportData({
       residents:
-        (residentsResponse.data ??
-          []) as GenericRecord[],
+        joinReportRows(residentsResponse.data ?? [], "residents", lookups),
 
       rooms:
         (roomsResponse.data ??
           []) as GenericRecord[],
 
       beds:
-        (bedsResponse.data ??
-          []) as GenericRecord[],
+        joinReportRows(bedsResponse.data ?? [], "beds", lookups),
 
       admissions:
-        (admissionsResponse.data ??
-          []) as GenericRecord[],
+        joinReportRows(admissionsResponse.data ?? [], "admissions", lookups),
 
       billing:
-        (billsResponse.data ??
-          []) as GenericRecord[],
+        joinReportRows(billsResponse.data ?? [], "bills", lookups),
 
       payments:
-        (paymentsResponse.data ??
-          []) as GenericRecord[],
+        joinReportRows(paymentsResponse.data ?? [], "payments", lookups),
 
       maintenance:
-        (maintenanceResponse.data ??
-          []) as GenericRecord[],
+        joinReportRows(maintenanceResponse.data ?? [], "maintenance_requests", lookups),
 
       inventory:
-        (inventoryResponse.data ??
-          []) as GenericRecord[],
+        (inventoryResponse.data ?? []).map(row => ({ ...row, report_date: reportDate(row, "inventory"), category_name: categoryNames.get(String(row.category_id)) ?? "" })),
     });
 
     setLoading(false);
@@ -458,25 +445,18 @@ export default function ReportsPage() {
         filteredData.inventory.length,
 
       totalbillsAmount:
-        filteredData.billing.reduce(
+        filteredData.billing.filter(bill => !["Cancelled", "Draft", "Pending Approval"].includes(String(bill.bill_status))).reduce(
           (sum, bill) =>
             sum +
-            getNumberValue(bill, [
-              "total_amount",
-              "amount",
-              "bill_amount",
-            ]),
+            getNumberValue(bill, ["total_amount"]),
           0
         ),
 
       totalPaymentAmount:
-        filteredData.payments.reduce(
+        filteredData.payments.filter(payment => payment.payment_status === "Verified").reduce(
           (sum, payment) =>
             sum +
-            getNumberValue(payment, [
-              "amount",
-              "paid_amount",
-            ]),
+            getNumberValue(payment, ["amount"]),
           0
         ),
     };
@@ -801,7 +781,7 @@ export default function ReportsPage() {
                     </th>
 
                     <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-600">
-                      Admission Date
+                      Created Date
                     </th>
 
                   </tr>
@@ -839,30 +819,21 @@ export default function ReportsPage() {
                           <td className="px-6 py-4">
                             {getStringValue(
                               resident,
-                              [
-                                "full_name",
-                                "name",
-                              ]
+                              ["full_name"]
                             ) || "—"}
                           </td>
 
                           <td className="px-6 py-4">
                             {getStringValue(
                               resident,
-                              [
-                                "phone",
-                                "phone_number",
-                              ]
+                              ["phone"]
                             ) || "—"}
                           </td>
 
                           <td className="px-6 py-4">
                             {getStringValue(
                               resident,
-                              [
-                                "cnic",
-                                "cnic_number",
-                              ]
+                              ["cnic"]
                             ) || "—"}
                           </td>
 
@@ -966,11 +937,7 @@ export default function ReportsPage() {
                           <td className="px-6 py-4">
                             {getStringValue(
                               room,
-                              [
-                                "room_number",
-                                "room_name",
-                                "name",
-                              ]
+                              ["room_number"]
                             ) || "—"}
                           </td>
 
@@ -978,7 +945,7 @@ export default function ReportsPage() {
                             {getStringValue(
                               room,
                               [
-                                "floor",
+      "floor_number",
                               ]
                             ) || "—"}
                           </td>
@@ -987,7 +954,6 @@ export default function ReportsPage() {
                             {getNumberValue(
                               room,
                               [
-                                "capacity",
                                 "total_beds",
                               ]
                             )}
@@ -1085,21 +1051,14 @@ export default function ReportsPage() {
                           <td className="px-6 py-4">
                             {getStringValue(
                               bed,
-                              [
-                                "bed_number",
-                                "bed_name",
-                                "name",
-                              ]
+                              ["bed_number"]
                             ) || "—"}
                           </td>
 
                           <td className="px-6 py-4">
                             {getStringValue(
                               bed,
-                              [
-                                "room_number",
-                                "room_name",
-                              ]
+                              ["room_number"]
                             ) || "—"}
                           </td>
 
@@ -1201,32 +1160,21 @@ export default function ReportsPage() {
 
                           <td className="px-6 py-4">
                             {getStringValue(
-                              admission,
-                              [
-                                "resident_name",
-                                "full_name",
-                                "name",
-                              ]
+                              admission, ["resident_name"]
                             ) || "—"}
                           </td>
 
                           <td className="px-6 py-4">
                             {getStringValue(
                               admission,
-                              [
-                                "room_number",
-                                "room_name",
-                              ]
+                              ["room_number"]
                             ) || "—"}
                           </td>
 
                           <td className="px-6 py-4">
                             {getStringValue(
                               admission,
-                              [
-                                "bed_number",
-                                "bed_name",
-                              ]
+                              ["bed_number"]
                             ) || "—"}
                           </td>
 
@@ -1324,12 +1272,7 @@ export default function ReportsPage() {
 
                           <td className="px-6 py-4">
                             {getStringValue(
-                              bill,
-                              [
-                                "resident_name",
-                                "full_name",
-                                "name",
-                              ]
+                              bill, ["resident_name"]
                             ) || "—"}
                           </td>
 
@@ -1338,21 +1281,13 @@ export default function ReportsPage() {
                               bill,
                               [
                                 "bill_type",
-                                "type",
                               ]
                             ) || "Monthly"}
                           </td>
 
                           <td className="px-6 py-4 font-medium text-green-600">
                             {formatCurrency(
-                              getNumberValue(
-                                bill,
-                                [
-                                  "amount",
-                                  "bill_amount",
-                                  "total_amount",
-                                ]
-                              )
+                              getNumberValue(bill, ["total_amount"])
                             )}
                           </td>
 
@@ -1450,34 +1385,20 @@ export default function ReportsPage() {
 
                           <td className="px-6 py-4">
                             {getStringValue(
-                              payment,
-                              [
-                                "resident_name",
-                                "full_name",
-                                "name",
-                              ]
+                              payment, ["resident_name"]
                             ) || "—"}
                           </td>
 
                           <td className="px-6 py-4 font-medium text-green-600">
                             {formatCurrency(
-                              getNumberValue(
-                                payment,
-                                [
-                                  "amount",
-                                  "paid_amount",
-                                ]
-                              )
+                              getNumberValue(payment, ["amount"])
                             )}
                           </td>
 
                           <td className="px-6 py-4">
                             {getStringValue(
                               payment,
-                              [
-                                "payment_method",
-                                "method",
-                              ]
+                              ["payment_method"]
                             ) || "—"}
                           </td>
 
@@ -1577,8 +1498,6 @@ export default function ReportsPage() {
                             {getStringValue(
                               item,
                               [
-                                "title",
-                                "issue",
                                 "description",
                               ]
                             ) || "—"}
@@ -1587,10 +1506,7 @@ export default function ReportsPage() {
                           <td className="px-6 py-4">
                             {getStringValue(
                               item,
-                              [
-                                "room_number",
-                                "room_name",
-                              ]
+                              ["room_number"]
                             ) || "—"}
                           </td>
 
@@ -1698,10 +1614,7 @@ export default function ReportsPage() {
                           <td className="px-6 py-4">
                             {getStringValue(
                               item,
-                              [
-                                "item_name",
-                                "name",
-                              ]
+                              ["item_name"]
                             ) || "—"}
                           </td>
 
@@ -1709,7 +1622,7 @@ export default function ReportsPage() {
                             {getStringValue(
                               item,
                               [
-                                "category",
+      "category_name",
                               ]
                             ) || "—"}
                           </td>
@@ -1719,7 +1632,6 @@ export default function ReportsPage() {
                               item,
                               [
                                 "quantity",
-                                "qty",
                               ]
                             )}
                           </td>

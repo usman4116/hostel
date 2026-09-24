@@ -1,0 +1,7679 @@
+{
+  "note": "Static checks only; wildcard results, variable payloads, computed columns, RLS, transactions and PostgreSQL execution require separate review.",
+  "migrationOrder": [
+    "20260801000000_create_base_schema.sql",
+    "20260802120000_add_resident_profile_columns.sql",
+    "20260811120000_add_inspection_actual_damage_cost.sql",
+    "20260811130000_add_maintenance_relationships.sql",
+    "20260811140000_add_notice_popup_flag.sql",
+    "20260811150000_add_notification_deliveries.sql",
+    "20260822120000_add_resident_communication_targets.sql",
+    "20260822130000_add_admin_data_management.sql",
+    "20260822140000_fix_admin_full_reset_safe_deletes.sql",
+    "20260822150000_canonical_integrity_corrections.sql",
+    "20260822160000_combined_payment_allocations.sql",
+    "20260822170000_table_rls_hardening.sql",
+    "20260822180000_storage_hardening.sql",
+    "20260822190000_retire_plaintext_passwords.sql",
+    "20260822200000_finance_contract_security_corrections.sql"
+  ],
+  "tables": {
+    "residents": [
+      "id",
+      "full_name",
+      "phone",
+      "email",
+      "cnic",
+      "portal_temp_password",
+      "status",
+      "created_at",
+      "updated_at",
+      "resident_code",
+      "father_name",
+      "dob",
+      "gender",
+      "emergency_contact",
+      "permanent_address",
+      "city",
+      "nationality",
+      "occupation",
+      "company_university",
+      "photo_url",
+      "id_card_url"
+    ],
+    "rooms": [
+      "id",
+      "room_number",
+      "floor_number",
+      "block_name",
+      "room_type",
+      "total_beds",
+      "occupied_beds",
+      "monthly_rent",
+      "security_deposit_amount",
+      "description",
+      "has_ac",
+      "has_attached_bathroom",
+      "has_balcony",
+      "status",
+      "created_at",
+      "updated_at"
+    ],
+    "beds": [
+      "id",
+      "room_id",
+      "bed_number",
+      "status",
+      "mattress_condition",
+      "mattress_cover",
+      "created_at",
+      "updated_at"
+    ],
+    "admissions": [
+      "id",
+      "resident_id",
+      "room_id",
+      "bed_id",
+      "admission_number",
+      "admission_date",
+      "expected_leaving_date",
+      "actual_leaving_date",
+      "monthly_rent",
+      "security_deposit",
+      "deposit_status",
+      "notice_period_days",
+      "status",
+      "notes",
+      "created_at",
+      "updated_at"
+    ],
+    "contract_templates": [
+      "id",
+      "template_name",
+      "title",
+      "content",
+      "is_active",
+      "created_at",
+      "updated_at"
+    ],
+    "contracts": [
+      "id",
+      "contract_number",
+      "resident_id",
+      "admission_id",
+      "room_id",
+      "bed_id",
+      "template_id",
+      "contract_content",
+      "start_date",
+      "end_date",
+      "monthly_rent",
+      "security_deposit",
+      "notice_period_days",
+      "status",
+      "resident_signature_status",
+      "owner_signature_status",
+      "resident_signature_url",
+      "resident_signature_name",
+      "owner_signature_name",
+      "signed_by_resident",
+      "signed_at",
+      "notes",
+      "created_at",
+      "updated_at"
+    ],
+    "bills": [
+      "id",
+      "bill_number",
+      "resident_id",
+      "admission_id",
+      "bill_type",
+      "billing_month",
+      "rent_amount",
+      "electricity_amount",
+      "ac_amount",
+      "other_amount",
+      "discount_amount",
+      "total_amount",
+      "paid_amount",
+      "balance_amount",
+      "due_date",
+      "bill_status",
+      "notes",
+      "created_at",
+      "updated_at"
+    ],
+    "ac_bills": [
+      "id",
+      "resident_id",
+      "admission_id",
+      "bill_id",
+      "billing_month",
+      "previous_reading",
+      "current_reading",
+      "units_consumed",
+      "rate_per_unit",
+      "total_amount",
+      "remarks",
+      "created_at",
+      "updated_at"
+    ],
+    "payments": [
+      "id",
+      "payment_number",
+      "resident_id",
+      "bill_id",
+      "payment_date",
+      "amount",
+      "payment_method",
+      "account_number",
+      "reference_number",
+      "notes",
+      "payment_status",
+      "verified",
+      "verified_by",
+      "verified_at",
+      "created_at",
+      "updated_at"
+    ],
+    "payment_receipts": [
+      "id",
+      "resident_id",
+      "bill_id",
+      "payment_id",
+      "receipt_url",
+      "original_file_name",
+      "reference_number",
+      "amount",
+      "status",
+      "verified",
+      "verified_by",
+      "verified_at",
+      "notes",
+      "remarks",
+      "uploaded_at",
+      "created_at",
+      "updated_at"
+    ],
+    "room_inspections": [
+      "id",
+      "inspection_number",
+      "resident_id",
+      "admission_id",
+      "room_id",
+      "bed_id",
+      "inspection_date",
+      "inspection_type",
+      "inspector_name",
+      "cleanliness",
+      "electrical_status",
+      "plumbing_status",
+      "furniture_condition",
+      "wall_floor_status",
+      "overall_status",
+      "notes",
+      "damage_description",
+      "damage_found",
+      "estimated_damage_cost",
+      "status",
+      "before_photos",
+      "after_photos",
+      "photos",
+      "created_at",
+      "updated_at",
+      "actual_damage_cost"
+    ],
+    "maintenance_requests": [
+      "id",
+      "request_number",
+      "resident_id",
+      "room_id",
+      "title",
+      "description",
+      "category",
+      "priority",
+      "status",
+      "assigned_to",
+      "estimated_cost",
+      "actual_cost",
+      "complaint_date",
+      "assigned_date",
+      "completion_date",
+      "completed_at",
+      "photo_url",
+      "notes",
+      "before_photos",
+      "during_photos",
+      "after_photos",
+      "created_at",
+      "updated_at",
+      "admission_id",
+      "bed_id"
+    ],
+    "maintenance_photos": [
+      "id",
+      "maintenance_request_id",
+      "photo_type",
+      "photo_url",
+      "created_at"
+    ],
+    "staff_users": [
+      "id",
+      "email",
+      "full_name",
+      "phone",
+      "notes",
+      "role",
+      "status",
+      "permissions",
+      "created_at",
+      "updated_at"
+    ],
+    "staff": [
+      "id",
+      "full_name",
+      "designation",
+      "joining_date",
+      "department",
+      "phone",
+      "email",
+      "cnic",
+      "address",
+      "notes",
+      "salary",
+      "advance_amount",
+      "status",
+      "created_at",
+      "updated_at"
+    ],
+    "notices": [
+      "id",
+      "notice_number",
+      "title",
+      "description",
+      "notice_type",
+      "audience",
+      "resident_id",
+      "room_id",
+      "staff_id",
+      "attachment_url",
+      "priority",
+      "status",
+      "publish_date",
+      "expiry_date",
+      "pinned",
+      "created_at",
+      "updated_at",
+      "show_as_popup",
+      "notification_recipient_type",
+      "notification_channels"
+    ],
+    "inventory_categories": [
+      "id",
+      "name",
+      "status",
+      "created_at",
+      "updated_at"
+    ],
+    "inventory": [
+      "id",
+      "asset_code",
+      "item_name",
+      "category_id",
+      "quantity",
+      "available_quantity",
+      "assigned_quantity",
+      "unit",
+      "purchase_date",
+      "warranty_expiry",
+      "purchase_price",
+      "supplier",
+      "brand",
+      "model",
+      "notes",
+      "item_condition",
+      "status",
+      "created_at",
+      "updated_at"
+    ],
+    "inventory_assignments": [
+      "id",
+      "inventory_id",
+      "room_id",
+      "bed_id",
+      "resident_id",
+      "staff_id",
+      "quantity",
+      "assigned_date",
+      "remarks",
+      "created_at",
+      "updated_at"
+    ],
+    "inventory_movements": [
+      "id",
+      "inventory_id",
+      "movement_type",
+      "quantity",
+      "movement_date",
+      "reference_no",
+      "remarks",
+      "created_at"
+    ],
+    "complaints": [
+      "id",
+      "resident_id",
+      "subject",
+      "category",
+      "description",
+      "priority",
+      "status",
+      "assigned_staff",
+      "resolved_at",
+      "created_at",
+      "updated_at"
+    ],
+    "visitors": [
+      "id",
+      "resident_id",
+      "visitor_name",
+      "cnic",
+      "mobile_number",
+      "relation",
+      "purpose",
+      "notes",
+      "entry_time",
+      "exit_time",
+      "status",
+      "created_at",
+      "updated_at"
+    ],
+    "system_settings": [
+      "setting_key",
+      "hostel_name",
+      "hostel_tagline",
+      "hostel_address",
+      "contact_number",
+      "email",
+      "manager_name",
+      "security_deposit_policy",
+      "logo_url",
+      "notes",
+      "default_currency",
+      "default_payment_method",
+      "security_deposit_rule_days",
+      "invoice_prefix",
+      "receipt_prefix",
+      "allow_online_payments",
+      "allow_receipt_uploads",
+      "enable_email_notifications",
+      "enable_sms_notifications",
+      "enable_whatsapp_notifications",
+      "auto_backup_enabled",
+      "backup_frequency",
+      "created_at",
+      "updated_at"
+    ],
+    "inspections": [
+      "id",
+      "resident_id",
+      "room_id",
+      "inspection_date",
+      "before_photo",
+      "after_photo",
+      "damage_notes",
+      "created_at"
+    ],
+    "resident_portal_links": [
+      "id",
+      "resident_id",
+      "created_at"
+    ],
+    "notification_deliveries": [
+      "id",
+      "event_key",
+      "event_type",
+      "entity_id",
+      "resident_id",
+      "email_status",
+      "whatsapp_status",
+      "status",
+      "attempt_count",
+      "last_error_code",
+      "created_at",
+      "updated_at",
+      "completed_at",
+      "requested_channels",
+      "sms_status",
+      "email_provider_message_id",
+      "whatsapp_provider_message_id",
+      "sms_provider_message_id"
+    ],
+    "notice_recipients": [
+      "notice_id",
+      "resident_id",
+      "created_at"
+    ],
+    "admin_data_action_audits": [
+      "id",
+      "admin_user_id",
+      "admin_staff_user_id",
+      "admin_email",
+      "action_type",
+      "deleted_resident_id",
+      "deleted_resident_name",
+      "deleted_record_counts",
+      "status",
+      "error_message",
+      "created_at"
+    ],
+    "payment_allocations": [
+      "id",
+      "payment_id",
+      "bill_id",
+      "amount",
+      "created_at"
+    ],
+    "payment_status_history": [
+      "id",
+      "payment_id",
+      "previous_status",
+      "next_status",
+      "actor",
+      "reason",
+      "created_at"
+    ]
+  },
+  "queryCount": 1165,
+  "syntax": [],
+  "findings": [],
+  "manualReview": [
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 563,
+      "table": "admissions",
+      "method": "update",
+      "reason": "variable payload/filter; manual review required"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 1066,
+      "table": "admissions",
+      "method": "update",
+      "reason": "variable payload/filter; manual review required"
+    },
+    {
+      "file": "app/beds/page.tsx",
+      "line": 463,
+      "table": "rooms",
+      "method": "update",
+      "reason": "variable payload/filter; manual review required"
+    },
+    {
+      "file": "app/beds/page.tsx",
+      "line": 469,
+      "table": "rooms",
+      "method": "insert",
+      "reason": "variable payload/filter; manual review required"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1256,
+      "table": "bills",
+      "method": "update",
+      "reason": "variable payload/filter; manual review required"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1297,
+      "table": "ac_bills",
+      "method": "update",
+      "reason": "variable payload/filter; manual review required"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1303,
+      "table": "ac_bills",
+      "method": "insert",
+      "reason": "variable payload/filter; manual review required"
+    },
+    {
+      "file": "app/contract-template/page.tsx",
+      "line": 103,
+      "table": "contract_templates",
+      "method": "update",
+      "reason": "variable payload/filter; manual review required"
+    },
+    {
+      "file": "app/contract-template/page.tsx",
+      "line": 109,
+      "table": "contract_templates",
+      "method": "insert",
+      "reason": "variable payload/filter; manual review required"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 156,
+      "table": "room_inspections",
+      "method": "update",
+      "reason": "variable payload/filter; manual review required"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 494,
+      "table": "maintenance_requests",
+      "method": "update",
+      "reason": "variable payload/filter; manual review required"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 446,
+      "table": "payments",
+      "method": "update",
+      "reason": "variable payload/filter; manual review required"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 450,
+      "table": "payments",
+      "method": "insert",
+      "reason": "variable payload/filter; manual review required"
+    },
+    {
+      "file": "app/profile/page.tsx",
+      "line": 163,
+      "table": "staff_users",
+      "method": "update",
+      "reason": "variable payload/filter; manual review required"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 601,
+      "table": "residents",
+      "method": "update",
+      "reason": "variable payload/filter; manual review required"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 602,
+      "table": "residents",
+      "method": "insert",
+      "reason": "variable payload/filter; manual review required"
+    },
+    {
+      "file": "app/rooms/page.tsx",
+      "line": 385,
+      "table": "rooms",
+      "method": "update",
+      "reason": "variable payload/filter; manual review required"
+    },
+    {
+      "file": "app/rooms/page.tsx",
+      "line": 391,
+      "table": "rooms",
+      "method": "insert",
+      "reason": "variable payload/filter; manual review required"
+    },
+    {
+      "file": "app/settings/page.tsx",
+      "line": 201,
+      "table": "system_settings",
+      "method": "upsert",
+      "reason": "variable payload/filter; manual review required"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 488,
+      "table": "payments",
+      "method": "update",
+      "reason": "variable payload/filter; manual review required"
+    },
+    {
+      "file": "app/maintenance/[id]/page.tsx",
+      "line": 181,
+      "table": "maintenance_requests",
+      "method": "update",
+      "reason": "variable payload/filter; manual review required"
+    },
+    {
+      "file": "app/maintenance/[id]/page.tsx",
+      "line": 220,
+      "table": "maintenance_requests",
+      "method": "update",
+      "reason": "variable payload/filter; manual review required"
+    },
+    {
+      "file": "app/api/billing/bulk-generate/route.ts",
+      "line": 233,
+      "table": "bills",
+      "method": "insert",
+      "reason": "variable payload/filter; manual review required"
+    },
+    {
+      "file": "app/api/resident-portal/deposit-receipts/route.ts",
+      "line": 168,
+      "table": "payment_receipts",
+      "method": "insert",
+      "reason": "variable payload/filter; manual review required"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 418,
+      "table": "beds",
+      "method": "insert",
+      "reason": "variable payload/filter; manual review required"
+    },
+    {
+      "file": "lib/noticeEditing.ts",
+      "line": 18,
+      "table": "notices",
+      "method": "update",
+      "reason": "variable payload/filter; manual review required"
+    },
+    {
+      "file": "lib/noticeEditing.ts",
+      "line": 19,
+      "table": "notices",
+      "method": "insert",
+      "reason": "variable payload/filter; manual review required"
+    },
+    {
+      "file": "lib/noticeEditing.ts",
+      "line": 25,
+      "table": "notice_recipients",
+      "method": "insert",
+      "reason": "variable payload/filter; manual review required"
+    }
+  ],
+  "queries": [
+    {
+      "file": "app/admin123/page.tsx",
+      "line": 97,
+      "table": "staff_users",
+      "method": "ilike"
+    },
+    {
+      "file": "app/admin123/page.tsx",
+      "line": 97,
+      "table": "staff_users",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 180,
+      "table": "admissions",
+      "method": "order"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 180,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 184,
+      "table": "residents",
+      "method": "order"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 184,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 188,
+      "table": "rooms",
+      "method": "order"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 188,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 192,
+      "table": "beds",
+      "method": "order"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 192,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 196,
+      "table": "contracts",
+      "method": "order"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 196,
+      "table": "contracts",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 384,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 384,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 420,
+      "table": "residents",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 420,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 425,
+      "table": "rooms",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 425,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 430,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 430,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 436,
+      "table": "admissions",
+      "method": "neq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 436,
+      "table": "admissions",
+      "method": "in"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 436,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 436,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 446,
+      "table": "admissions",
+      "method": "neq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 446,
+      "table": "admissions",
+      "method": "in"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 446,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 446,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 539,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 539,
+      "table": "beds",
+      "method": "in"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 539,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 539,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 539,
+      "table": "beds",
+      "method": "update"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 563,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 563,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 563,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 563,
+      "table": "admissions",
+      "method": "update"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 573,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 573,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 573,
+      "table": "beds",
+      "method": "update"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 611,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 611,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 611,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 611,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 611,
+      "table": "admissions",
+      "method": "update"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 634,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 634,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 634,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 634,
+      "table": "beds",
+      "method": "update"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 660,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 660,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 684,
+      "table": "residents",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 684,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 689,
+      "table": "rooms",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 689,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 690,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 690,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 695,
+      "table": "contracts",
+      "method": "order"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 695,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 695,
+      "table": "contracts",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 774,
+      "table": "admissions",
+      "method": "neq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 774,
+      "table": "admissions",
+      "method": "in"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 774,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 774,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 796,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 796,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 796,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 796,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 796,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 796,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 796,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 796,
+      "table": "contracts",
+      "method": "update"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 830,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 830,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 830,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 830,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 830,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 830,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 830,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 830,
+      "table": "admissions",
+      "method": "update"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 843,
+      "table": "contracts",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 843,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 843,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 843,
+      "table": "contracts",
+      "method": "update"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 866,
+      "table": "residents",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 866,
+      "table": "residents",
+      "method": "update"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 881,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 881,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 881,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 881,
+      "table": "admissions",
+      "method": "update"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 888,
+      "table": "contracts",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 888,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 888,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 888,
+      "table": "contracts",
+      "method": "update"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 933,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 933,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 956,
+      "table": "contracts",
+      "method": "order"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 956,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 956,
+      "table": "contracts",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 1066,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 1066,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 1066,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 1066,
+      "table": "admissions",
+      "method": "update"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 1089,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 1089,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 1089,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 1089,
+      "table": "admissions",
+      "method": "update"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 1144,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 1144,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 1144,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 1144,
+      "table": "admissions",
+      "method": "update"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 1167,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 1167,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 1167,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 1167,
+      "table": "admissions",
+      "method": "update"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 1887,
+      "table": "admissions",
+      "method": "in"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 1887,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 1887,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 1897,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 1897,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "app/admissions/page.tsx",
+      "line": 1897,
+      "table": "beds",
+      "method": "update"
+    },
+    {
+      "file": "app/beds/page.tsx",
+      "line": 169,
+      "table": "rooms",
+      "method": "order"
+    },
+    {
+      "file": "app/beds/page.tsx",
+      "line": 169,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/beds/page.tsx",
+      "line": 170,
+      "table": "beds",
+      "method": "order"
+    },
+    {
+      "file": "app/beds/page.tsx",
+      "line": 170,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "app/beds/page.tsx",
+      "line": 171,
+      "table": "admissions",
+      "method": "in"
+    },
+    {
+      "file": "app/beds/page.tsx",
+      "line": 171,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/beds/page.tsx",
+      "line": 463,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/beds/page.tsx",
+      "line": 463,
+      "table": "rooms",
+      "method": "eq"
+    },
+    {
+      "file": "app/beds/page.tsx",
+      "line": 463,
+      "table": "rooms",
+      "method": "update"
+    },
+    {
+      "file": "app/beds/page.tsx",
+      "line": 469,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/beds/page.tsx",
+      "line": 469,
+      "table": "rooms",
+      "method": "insert"
+    },
+    {
+      "file": "app/beds/page.tsx",
+      "line": 583,
+      "table": "rooms",
+      "method": "eq"
+    },
+    {
+      "file": "app/beds/page.tsx",
+      "line": 583,
+      "table": "rooms",
+      "method": "update"
+    },
+    {
+      "file": "app/beds/page.tsx",
+      "line": 587,
+      "table": "rooms",
+      "method": "eq"
+    },
+    {
+      "file": "app/beds/page.tsx",
+      "line": 594,
+      "table": "rooms",
+      "method": "eq"
+    },
+    {
+      "file": "app/beds/page.tsx",
+      "line": 594,
+      "table": "rooms",
+      "method": "update"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 315,
+      "table": "bills",
+      "method": "order"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 315,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 319,
+      "table": "residents",
+      "method": "order"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 319,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 323,
+      "table": "admissions",
+      "method": "order"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 323,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 327,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 328,
+      "table": "ac_bills",
+      "method": "order"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 328,
+      "table": "ac_bills",
+      "method": "select"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 332,
+      "table": "payments",
+      "method": "order"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 332,
+      "table": "payments",
+      "method": "select"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 336,
+      "table": "payment_receipts",
+      "method": "select"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 797,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 797,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 811,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 811,
+      "table": "payments",
+      "method": "select"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 826,
+      "table": "payments",
+      "method": "insert"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 915,
+      "table": "ac_bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 915,
+      "table": "ac_bills",
+      "method": "select"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 951,
+      "table": "ac_bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 951,
+      "table": "ac_bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 951,
+      "table": "ac_bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 951,
+      "table": "ac_bills",
+      "method": "select"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 988,
+      "table": "ac_bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 988,
+      "table": "ac_bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 988,
+      "table": "ac_bills",
+      "method": "select"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1135,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1135,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1153,
+      "table": "bills",
+      "method": "neq"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1153,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1153,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1153,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1170,
+      "table": "ac_bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1170,
+      "table": "ac_bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1170,
+      "table": "ac_bills",
+      "method": "select"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1200,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1200,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1256,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1256,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1256,
+      "table": "bills",
+      "method": "update"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1262,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1262,
+      "table": "bills",
+      "method": "insert"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1297,
+      "table": "ac_bills",
+      "method": "select"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1297,
+      "table": "ac_bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1297,
+      "table": "ac_bills",
+      "method": "update"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1303,
+      "table": "ac_bills",
+      "method": "select"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1303,
+      "table": "ac_bills",
+      "method": "insert"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1336,
+      "table": "ac_bills",
+      "method": "select"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1336,
+      "table": "ac_bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1336,
+      "table": "ac_bills",
+      "method": "update"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1352,
+      "table": "ac_bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1352,
+      "table": "ac_bills",
+      "method": "select"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1441,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1441,
+      "table": "bills",
+      "method": "update"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1457,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1457,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "app/billing/page.tsx",
+      "line": 1468,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/contract-template/page.tsx",
+      "line": 31,
+      "table": "contract_templates",
+      "method": "order"
+    },
+    {
+      "file": "app/contract-template/page.tsx",
+      "line": 31,
+      "table": "contract_templates",
+      "method": "select"
+    },
+    {
+      "file": "app/contract-template/page.tsx",
+      "line": 103,
+      "table": "contract_templates",
+      "method": "select"
+    },
+    {
+      "file": "app/contract-template/page.tsx",
+      "line": 103,
+      "table": "contract_templates",
+      "method": "eq"
+    },
+    {
+      "file": "app/contract-template/page.tsx",
+      "line": 103,
+      "table": "contract_templates",
+      "method": "update"
+    },
+    {
+      "file": "app/contract-template/page.tsx",
+      "line": 109,
+      "table": "contract_templates",
+      "method": "select"
+    },
+    {
+      "file": "app/contract-template/page.tsx",
+      "line": 109,
+      "table": "contract_templates",
+      "method": "insert"
+    },
+    {
+      "file": "app/contract-template/page.tsx",
+      "line": 127,
+      "table": "contract_templates",
+      "method": "neq"
+    },
+    {
+      "file": "app/contract-template/page.tsx",
+      "line": 127,
+      "table": "contract_templates",
+      "method": "update"
+    },
+    {
+      "file": "app/contract-template/page.tsx",
+      "line": 161,
+      "table": "contract_templates",
+      "method": "eq"
+    },
+    {
+      "file": "app/contract-template/page.tsx",
+      "line": 161,
+      "table": "contract_templates",
+      "method": "update"
+    },
+    {
+      "file": "app/contract-template/page.tsx",
+      "line": 179,
+      "table": "contract_templates",
+      "method": "neq"
+    },
+    {
+      "file": "app/contract-template/page.tsx",
+      "line": 179,
+      "table": "contract_templates",
+      "method": "update"
+    },
+    {
+      "file": "app/contract-template/page.tsx",
+      "line": 205,
+      "table": "contract_templates",
+      "method": "eq"
+    },
+    {
+      "file": "app/contract-template/page.tsx",
+      "line": 205,
+      "table": "contract_templates",
+      "method": "update"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 200,
+      "table": "contracts",
+      "method": "order"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 200,
+      "table": "contracts",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 201,
+      "table": "residents",
+      "method": "order"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 201,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 202,
+      "table": "admissions",
+      "method": "order"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 202,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 203,
+      "table": "rooms",
+      "method": "order"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 203,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 204,
+      "table": "beds",
+      "method": "order"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 204,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 205,
+      "table": "contract_templates",
+      "method": "order"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 205,
+      "table": "contract_templates",
+      "method": "order"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 205,
+      "table": "contract_templates",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 323,
+      "table": "contract_templates",
+      "method": "eq"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 323,
+      "table": "contract_templates",
+      "method": "update"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 336,
+      "table": "contract_templates",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 336,
+      "table": "contract_templates",
+      "method": "insert"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 354,
+      "table": "contract_templates",
+      "method": "neq"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 354,
+      "table": "contract_templates",
+      "method": "update"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 435,
+      "table": "residents",
+      "method": "eq"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 435,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 441,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 441,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 494,
+      "table": "contracts",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 494,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 494,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 494,
+      "table": "contracts",
+      "method": "update"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 529,
+      "table": "contracts",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 529,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 529,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 529,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/contracts/page.tsx",
+      "line": 529,
+      "table": "contracts",
+      "method": "update"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 61,
+      "table": "residents",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 61,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 62,
+      "table": "admissions",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 62,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 63,
+      "table": "contracts",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 63,
+      "table": "contracts",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 64,
+      "table": "bills",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 64,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 65,
+      "table": "payments",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 65,
+      "table": "payments",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 66,
+      "table": "payment_receipts",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 66,
+      "table": "payment_receipts",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 67,
+      "table": "maintenance_requests",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 67,
+      "table": "maintenance_requests",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 68,
+      "table": "room_inspections",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 68,
+      "table": "room_inspections",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 69,
+      "table": "notices",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 69,
+      "table": "notices",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 70,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 71,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 62,
+      "table": "room_inspections",
+      "method": "order"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 62,
+      "table": "room_inspections",
+      "method": "select"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 63,
+      "table": "inspections",
+      "method": "order"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 63,
+      "table": "inspections",
+      "method": "select"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 64,
+      "table": "residents",
+      "method": "order"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 64,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 65,
+      "table": "rooms",
+      "method": "order"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 65,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 66,
+      "table": "admissions",
+      "method": "order"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 66,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 67,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 138,
+      "table": "residents",
+      "method": "eq"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 138,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 140,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 140,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 143,
+      "table": "room_inspections",
+      "method": "neq"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 143,
+      "table": "room_inspections",
+      "method": "eq"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 143,
+      "table": "room_inspections",
+      "method": "eq"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 143,
+      "table": "room_inspections",
+      "method": "select"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 148,
+      "table": "room_inspections",
+      "method": "eq"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 148,
+      "table": "room_inspections",
+      "method": "select"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 156,
+      "table": "room_inspections",
+      "method": "eq"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 156,
+      "table": "room_inspections",
+      "method": "update"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 160,
+      "table": "room_inspections",
+      "method": "select"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 160,
+      "table": "room_inspections",
+      "method": "insert"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 168,
+      "table": "room_inspections",
+      "method": "eq"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 168,
+      "table": "room_inspections",
+      "method": "update"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 183,
+      "table": "room_inspections",
+      "method": "eq"
+    },
+    {
+      "file": "app/inspection/page.tsx",
+      "line": 183,
+      "table": "room_inspections",
+      "method": "update"
+    },
+    {
+      "file": "app/login/page.tsx",
+      "line": 96,
+      "table": "residents",
+      "method": "ilike"
+    },
+    {
+      "file": "app/login/page.tsx",
+      "line": 96,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 212,
+      "table": "maintenance_requests",
+      "method": "order"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 212,
+      "table": "maintenance_requests",
+      "method": "select"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 216,
+      "table": "residents",
+      "method": "order"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 216,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 220,
+      "table": "rooms",
+      "method": "order"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 220,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 224,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 225,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 435,
+      "table": "maintenance_requests",
+      "method": "eq"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 435,
+      "table": "maintenance_requests",
+      "method": "select"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 448,
+      "table": "rooms",
+      "method": "eq"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 448,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 449,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 449,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 450,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 450,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 457,
+      "table": "residents",
+      "method": "eq"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 457,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 494,
+      "table": "maintenance_requests",
+      "method": "select"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 494,
+      "table": "maintenance_requests",
+      "method": "eq"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 494,
+      "table": "maintenance_requests",
+      "method": "eq"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 494,
+      "table": "maintenance_requests",
+      "method": "update"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 502,
+      "table": "maintenance_requests",
+      "method": "select"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 502,
+      "table": "maintenance_requests",
+      "method": "insert"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 531,
+      "table": "maintenance_requests",
+      "method": "eq"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 531,
+      "table": "maintenance_requests",
+      "method": "update"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 585,
+      "table": "maintenance_requests",
+      "method": "eq"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 585,
+      "table": "maintenance_requests",
+      "method": "select"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 594,
+      "table": "maintenance_requests",
+      "method": "select"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 594,
+      "table": "maintenance_requests",
+      "method": "eq"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 594,
+      "table": "maintenance_requests",
+      "method": "eq"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 594,
+      "table": "maintenance_requests",
+      "method": "update"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 614,
+      "table": "maintenance_requests",
+      "method": "eq"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 614,
+      "table": "maintenance_requests",
+      "method": "select"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 623,
+      "table": "maintenance_requests",
+      "method": "select"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 623,
+      "table": "maintenance_requests",
+      "method": "eq"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 623,
+      "table": "maintenance_requests",
+      "method": "eq"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 623,
+      "table": "maintenance_requests",
+      "method": "update"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 642,
+      "table": "maintenance_requests",
+      "method": "eq"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 642,
+      "table": "maintenance_requests",
+      "method": "update"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 682,
+      "table": "maintenance_requests",
+      "method": "eq"
+    },
+    {
+      "file": "app/maintenance/page.tsx",
+      "line": 682,
+      "table": "maintenance_requests",
+      "method": "update"
+    },
+    {
+      "file": "app/meter-reading/page.tsx",
+      "line": 119,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/meter-reading/page.tsx",
+      "line": 119,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/meter-reading/page.tsx",
+      "line": 123,
+      "table": "residents",
+      "method": "neq"
+    },
+    {
+      "file": "app/meter-reading/page.tsx",
+      "line": 123,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/meter-reading/page.tsx",
+      "line": 127,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/meter-reading/page.tsx",
+      "line": 128,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "app/notices/page.tsx",
+      "line": 17,
+      "table": "notices",
+      "method": "order"
+    },
+    {
+      "file": "app/notices/page.tsx",
+      "line": 17,
+      "table": "notices",
+      "method": "order"
+    },
+    {
+      "file": "app/notices/page.tsx",
+      "line": 17,
+      "table": "notices",
+      "method": "select"
+    },
+    {
+      "file": "app/notices/page.tsx",
+      "line": 30,
+      "table": "notice_recipients",
+      "method": "eq"
+    },
+    {
+      "file": "app/notices/page.tsx",
+      "line": 30,
+      "table": "notice_recipients",
+      "method": "select"
+    },
+    {
+      "file": "app/notices/page.tsx",
+      "line": 33,
+      "table": "notices",
+      "method": "select"
+    },
+    {
+      "file": "app/notices/page.tsx",
+      "line": 33,
+      "table": "notices",
+      "method": "eq"
+    },
+    {
+      "file": "app/notices/page.tsx",
+      "line": 33,
+      "table": "notices",
+      "method": "eq"
+    },
+    {
+      "file": "app/notices/page.tsx",
+      "line": 33,
+      "table": "notices",
+      "method": "eq"
+    },
+    {
+      "file": "app/notices/page.tsx",
+      "line": 33,
+      "table": "notices",
+      "method": "update"
+    },
+    {
+      "file": "app/payment-verification/page.tsx",
+      "line": 144,
+      "table": "payment_receipts",
+      "method": "order"
+    },
+    {
+      "file": "app/payment-verification/page.tsx",
+      "line": 144,
+      "table": "payment_receipts",
+      "method": "select"
+    },
+    {
+      "file": "app/payment-verification/page.tsx",
+      "line": 148,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/payment-verification/page.tsx",
+      "line": 149,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "app/payment-verification/page.tsx",
+      "line": 150,
+      "table": "payments",
+      "method": "select"
+    },
+    {
+      "file": "app/payment-verification/page.tsx",
+      "line": 151,
+      "table": "payment_allocations",
+      "method": "select"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 143,
+      "table": "payments",
+      "method": "order"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 143,
+      "table": "payments",
+      "method": "select"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 147,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 148,
+      "table": "bills",
+      "method": "order"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 148,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 342,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 342,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 364,
+      "table": "residents",
+      "method": "eq"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 364,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 383,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 383,
+      "table": "payments",
+      "method": "select"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 446,
+      "table": "payments",
+      "method": "select"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 446,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 446,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 446,
+      "table": "payments",
+      "method": "update"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 450,
+      "table": "payments",
+      "method": "select"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 450,
+      "table": "payments",
+      "method": "insert"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 489,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 489,
+      "table": "payments",
+      "method": "select"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 535,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 535,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 539,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 539,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 545,
+      "table": "payments",
+      "method": "select"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 545,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 545,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/payments/page.tsx",
+      "line": 545,
+      "table": "payments",
+      "method": "update"
+    },
+    {
+      "file": "app/profile/page.tsx",
+      "line": 79,
+      "table": "staff_users",
+      "method": "ilike"
+    },
+    {
+      "file": "app/profile/page.tsx",
+      "line": 79,
+      "table": "staff_users",
+      "method": "select"
+    },
+    {
+      "file": "app/profile/page.tsx",
+      "line": 163,
+      "table": "staff_users",
+      "method": "eq"
+    },
+    {
+      "file": "app/profile/page.tsx",
+      "line": 163,
+      "table": "staff_users",
+      "method": "update"
+    },
+    {
+      "file": "app/resident-portal/page.tsx",
+      "line": 122,
+      "table": "notices",
+      "method": "order"
+    },
+    {
+      "file": "app/resident-portal/page.tsx",
+      "line": 122,
+      "table": "notices",
+      "method": "order"
+    },
+    {
+      "file": "app/resident-portal/page.tsx",
+      "line": 122,
+      "table": "notices",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/page.tsx",
+      "line": 122,
+      "table": "notices",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/page.tsx",
+      "line": 128,
+      "table": "notice_recipients",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/page.tsx",
+      "line": 128,
+      "table": "notice_recipients",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/page.tsx",
+      "line": 132,
+      "table": "room_inspections",
+      "method": "order"
+    },
+    {
+      "file": "app/resident-portal/page.tsx",
+      "line": 132,
+      "table": "room_inspections",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/page.tsx",
+      "line": 132,
+      "table": "room_inspections",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/page.tsx",
+      "line": 137,
+      "table": "maintenance_requests",
+      "method": "order"
+    },
+    {
+      "file": "app/resident-portal/page.tsx",
+      "line": 137,
+      "table": "maintenance_requests",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/page.tsx",
+      "line": 137,
+      "table": "maintenance_requests",
+      "method": "select"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 222,
+      "table": "residents",
+      "method": "order"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 222,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 226,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 226,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 273,
+      "table": "residents",
+      "method": "eq"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 273,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 302,
+      "table": "admissions",
+      "method": "order"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 302,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 302,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 303,
+      "table": "contracts",
+      "method": "order"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 303,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 303,
+      "table": "contracts",
+      "method": "select"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 304,
+      "table": "bills",
+      "method": "order"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 304,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 304,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 305,
+      "table": "payments",
+      "method": "order"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 305,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 305,
+      "table": "payments",
+      "method": "select"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 306,
+      "table": "notices",
+      "method": "order"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 306,
+      "table": "notices",
+      "method": "select"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 307,
+      "table": "room_inspections",
+      "method": "order"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 307,
+      "table": "room_inspections",
+      "method": "eq"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 307,
+      "table": "room_inspections",
+      "method": "select"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 308,
+      "table": "maintenance_requests",
+      "method": "order"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 308,
+      "table": "maintenance_requests",
+      "method": "eq"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 308,
+      "table": "maintenance_requests",
+      "method": "select"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 325,
+      "table": "rooms",
+      "method": "eq"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 325,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 330,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 330,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 544,
+      "table": "residents",
+      "method": "order"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 544,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 601,
+      "table": "residents",
+      "method": "eq"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 601,
+      "table": "residents",
+      "method": "update"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 602,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 602,
+      "table": "residents",
+      "method": "insert"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 695,
+      "table": "admissions",
+      "method": "in"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 695,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 695,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 716,
+      "table": "residents",
+      "method": "eq"
+    },
+    {
+      "file": "app/residents/page.tsx",
+      "line": 716,
+      "table": "residents",
+      "method": "update"
+    },
+    {
+      "file": "app/rooms/page.tsx",
+      "line": 164,
+      "table": "rooms",
+      "method": "order"
+    },
+    {
+      "file": "app/rooms/page.tsx",
+      "line": 164,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/rooms/page.tsx",
+      "line": 167,
+      "table": "beds",
+      "method": "order"
+    },
+    {
+      "file": "app/rooms/page.tsx",
+      "line": 167,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "app/rooms/page.tsx",
+      "line": 171,
+      "table": "admissions",
+      "method": "in"
+    },
+    {
+      "file": "app/rooms/page.tsx",
+      "line": 171,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/rooms/page.tsx",
+      "line": 385,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/rooms/page.tsx",
+      "line": 385,
+      "table": "rooms",
+      "method": "eq"
+    },
+    {
+      "file": "app/rooms/page.tsx",
+      "line": 385,
+      "table": "rooms",
+      "method": "update"
+    },
+    {
+      "file": "app/rooms/page.tsx",
+      "line": 391,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/rooms/page.tsx",
+      "line": 391,
+      "table": "rooms",
+      "method": "insert"
+    },
+    {
+      "file": "app/rooms/page.tsx",
+      "line": 477,
+      "table": "rooms",
+      "method": "eq"
+    },
+    {
+      "file": "app/rooms/page.tsx",
+      "line": 477,
+      "table": "rooms",
+      "method": "update"
+    },
+    {
+      "file": "app/rooms/page.tsx",
+      "line": 481,
+      "table": "rooms",
+      "method": "eq"
+    },
+    {
+      "file": "app/rooms/page.tsx",
+      "line": 488,
+      "table": "rooms",
+      "method": "eq"
+    },
+    {
+      "file": "app/rooms/page.tsx",
+      "line": 488,
+      "table": "rooms",
+      "method": "update"
+    },
+    {
+      "file": "app/settings/page.tsx",
+      "line": 79,
+      "table": "system_settings",
+      "method": "eq"
+    },
+    {
+      "file": "app/settings/page.tsx",
+      "line": 79,
+      "table": "system_settings",
+      "method": "select"
+    },
+    {
+      "file": "app/settings/page.tsx",
+      "line": 124,
+      "table": "staff_users",
+      "method": "ilike"
+    },
+    {
+      "file": "app/settings/page.tsx",
+      "line": 124,
+      "table": "staff_users",
+      "method": "select"
+    },
+    {
+      "file": "app/settings/page.tsx",
+      "line": 201,
+      "table": "system_settings",
+      "method": "upsert"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 34,
+      "table": "ac_bills",
+      "method": "order"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 34,
+      "table": "ac_bills",
+      "method": "select"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 66,
+      "table": "residents",
+      "method": "in"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 66,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 69,
+      "table": "bills",
+      "method": "in"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 69,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 72,
+      "table": "admissions",
+      "method": "in"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 72,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 85,
+      "table": "rooms",
+      "method": "in"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 85,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 88,
+      "table": "beds",
+      "method": "in"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 88,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 152,
+      "table": "admissions",
+      "method": "in"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 152,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 152,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 152,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 167,
+      "table": "ac_bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 167,
+      "table": "ac_bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 167,
+      "table": "ac_bills",
+      "method": "select"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 181,
+      "table": "ac_bills",
+      "method": "select"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 181,
+      "table": "ac_bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 181,
+      "table": "ac_bills",
+      "method": "update"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 202,
+      "table": "ac_bills",
+      "method": "select"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 202,
+      "table": "ac_bills",
+      "method": "insert"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 260,
+      "table": "ac_bills",
+      "method": "select"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 260,
+      "table": "ac_bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 260,
+      "table": "ac_bills",
+      "method": "update"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 297,
+      "table": "ac_bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 297,
+      "table": "ac_bills",
+      "method": "select"
+    },
+    {
+      "file": "app/api/meter-reading/route.ts",
+      "line": 310,
+      "table": "ac_bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 97,
+      "table": "staff_users",
+      "method": "ilike"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 97,
+      "table": "staff_users",
+      "method": "select"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 134,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 134,
+      "table": "payment_receipts",
+      "method": "select"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 151,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 151,
+      "table": "payments",
+      "method": "select"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 212,
+      "table": "payment_receipts",
+      "method": "select"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 212,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 212,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 212,
+      "table": "payment_receipts",
+      "method": "update"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 234,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 234,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 234,
+      "table": "payments",
+      "method": "update"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 281,
+      "table": "admissions",
+      "method": "in"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 281,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 281,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 281,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 288,
+      "table": "bills",
+      "method": "neq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 288,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 288,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 288,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 288,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 293,
+      "table": "payment_receipts",
+      "method": "select"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 293,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 293,
+      "table": "payment_receipts",
+      "method": "is"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 293,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 293,
+      "table": "payment_receipts",
+      "method": "update"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 304,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 304,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 326,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 326,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 346,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 346,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 346,
+      "table": "payments",
+      "method": "select"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 377,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 377,
+      "table": "payments",
+      "method": "select"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 413,
+      "table": "payment_receipts",
+      "method": "select"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 413,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 413,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 413,
+      "table": "payment_receipts",
+      "method": "update"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 439,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 439,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 439,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 439,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 439,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 439,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 439,
+      "table": "bills",
+      "method": "update"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 455,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 455,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 455,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 455,
+      "table": "payment_receipts",
+      "method": "update"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 488,
+      "table": "payments",
+      "method": "select"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 488,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 488,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 488,
+      "table": "payments",
+      "method": "update"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 495,
+      "table": "payments",
+      "method": "select"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 495,
+      "table": "payments",
+      "method": "insert"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 506,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 506,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 506,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 506,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 506,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 506,
+      "table": "bills",
+      "method": "update"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 519,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 519,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 519,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 519,
+      "table": "payment_receipts",
+      "method": "update"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 538,
+      "table": "payment_receipts",
+      "method": "select"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 538,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 538,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 538,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 538,
+      "table": "payment_receipts",
+      "method": "update"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 552,
+      "table": "admissions",
+      "method": "in"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 552,
+      "table": "admissions",
+      "method": "in"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 552,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/payment-verification/route.ts",
+      "line": 552,
+      "table": "admissions",
+      "method": "update"
+    },
+    {
+      "file": "app/beds/add/page.tsx",
+      "line": 39,
+      "table": "rooms",
+      "method": "order"
+    },
+    {
+      "file": "app/beds/add/page.tsx",
+      "line": 39,
+      "table": "rooms",
+      "method": "neq"
+    },
+    {
+      "file": "app/beds/add/page.tsx",
+      "line": 39,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/beds/add/page.tsx",
+      "line": 44,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "app/beds/add/page.tsx",
+      "line": 94,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "app/beds/add/page.tsx",
+      "line": 94,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/add/page.tsx",
+      "line": 60,
+      "table": "residents",
+      "method": "order"
+    },
+    {
+      "file": "app/contracts/add/page.tsx",
+      "line": 60,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/add/page.tsx",
+      "line": 61,
+      "table": "admissions",
+      "method": "order"
+    },
+    {
+      "file": "app/contracts/add/page.tsx",
+      "line": 61,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/contracts/add/page.tsx",
+      "line": 61,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/add/page.tsx",
+      "line": 66,
+      "table": "contracts",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/add/page.tsx",
+      "line": 67,
+      "table": "contract_templates",
+      "method": "order"
+    },
+    {
+      "file": "app/contracts/add/page.tsx",
+      "line": 67,
+      "table": "contract_templates",
+      "method": "eq"
+    },
+    {
+      "file": "app/contracts/add/page.tsx",
+      "line": 67,
+      "table": "contract_templates",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/add/page.tsx",
+      "line": 68,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/add/page.tsx",
+      "line": 69,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/add/page.tsx",
+      "line": 156,
+      "table": "residents",
+      "method": "eq"
+    },
+    {
+      "file": "app/contracts/add/page.tsx",
+      "line": 156,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/add/page.tsx",
+      "line": 157,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/contracts/add/page.tsx",
+      "line": 157,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/add/page.tsx",
+      "line": 162,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/contracts/add/page.tsx",
+      "line": 162,
+      "table": "contracts",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/add/page.tsx",
+      "line": 192,
+      "table": "contracts",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/add/page.tsx",
+      "line": 192,
+      "table": "contracts",
+      "method": "insert"
+    },
+    {
+      "file": "app/contracts/[id]/page.tsx",
+      "line": 56,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/contracts/[id]/page.tsx",
+      "line": 56,
+      "table": "contracts",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/[id]/page.tsx",
+      "line": 119,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/contracts/[id]/page.tsx",
+      "line": 119,
+      "table": "contracts",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/complaints/page.tsx",
+      "line": 24,
+      "table": "complaints",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/complaints/page.tsx",
+      "line": 24,
+      "table": "complaints",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/complaints/page.tsx",
+      "line": 53,
+      "table": "complaints",
+      "method": "eq"
+    },
+    {
+      "file": "app/dashboard/complaints/page.tsx",
+      "line": 53,
+      "table": "complaints",
+      "method": "update"
+    },
+    {
+      "file": "app/dashboard/inventory/page.tsx",
+      "line": 53,
+      "table": "inventory",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/inventory/page.tsx",
+      "line": 53,
+      "table": "inventory",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/inventory/page.tsx",
+      "line": 187,
+      "table": "inventory",
+      "method": "eq"
+    },
+    {
+      "file": "app/dashboard/notices/page.tsx",
+      "line": 40,
+      "table": "notices",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/notices/page.tsx",
+      "line": 40,
+      "table": "notices",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/notices/page.tsx",
+      "line": 40,
+      "table": "notices",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/notices/page.tsx",
+      "line": 108,
+      "table": "notices",
+      "method": "eq"
+    },
+    {
+      "file": "app/dashboard/reports/page.tsx",
+      "line": 223,
+      "table": "residents",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/reports/page.tsx",
+      "line": 223,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/reports/page.tsx",
+      "line": 230,
+      "table": "rooms",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/reports/page.tsx",
+      "line": 230,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/reports/page.tsx",
+      "line": 237,
+      "table": "beds",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/reports/page.tsx",
+      "line": 237,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/reports/page.tsx",
+      "line": 244,
+      "table": "admissions",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/reports/page.tsx",
+      "line": 244,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/reports/page.tsx",
+      "line": 251,
+      "table": "bills",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/reports/page.tsx",
+      "line": 251,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/reports/page.tsx",
+      "line": 258,
+      "table": "payments",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/reports/page.tsx",
+      "line": 258,
+      "table": "payments",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/reports/page.tsx",
+      "line": 265,
+      "table": "maintenance_requests",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/reports/page.tsx",
+      "line": 265,
+      "table": "maintenance_requests",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/reports/page.tsx",
+      "line": 274,
+      "table": "inventory",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/reports/page.tsx",
+      "line": 274,
+      "table": "inventory",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/reports/page.tsx",
+      "line": 280,
+      "table": "inventory_categories",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/staff/page.tsx",
+      "line": 27,
+      "table": "staff",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/staff/page.tsx",
+      "line": 27,
+      "table": "staff",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/staff/page.tsx",
+      "line": 68,
+      "table": "staff",
+      "method": "eq"
+    },
+    {
+      "file": "app/dashboard/visitors/page.tsx",
+      "line": 24,
+      "table": "visitors",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/visitors/page.tsx",
+      "line": 24,
+      "table": "visitors",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/visitors/page.tsx",
+      "line": 52,
+      "table": "visitors",
+      "method": "eq"
+    },
+    {
+      "file": "app/dashboard/visitors/page.tsx",
+      "line": 52,
+      "table": "visitors",
+      "method": "update"
+    },
+    {
+      "file": "app/inspection/[id]/page.tsx",
+      "line": 60,
+      "table": "room_inspections",
+      "method": "eq"
+    },
+    {
+      "file": "app/inspection/[id]/page.tsx",
+      "line": 60,
+      "table": "room_inspections",
+      "method": "select"
+    },
+    {
+      "file": "app/inspection/[id]/page.tsx",
+      "line": 84,
+      "table": "residents",
+      "method": "eq"
+    },
+    {
+      "file": "app/inspection/[id]/page.tsx",
+      "line": 84,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/inspection/[id]/page.tsx",
+      "line": 87,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/inspection/[id]/page.tsx",
+      "line": 87,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/inspection/[id]/page.tsx",
+      "line": 90,
+      "table": "rooms",
+      "method": "eq"
+    },
+    {
+      "file": "app/inspection/[id]/page.tsx",
+      "line": 90,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/inspection/[id]/page.tsx",
+      "line": 93,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "app/inspection/[id]/page.tsx",
+      "line": 93,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "app/inspection/[id]/page.tsx",
+      "line": 96,
+      "table": "room_inspections",
+      "method": "order"
+    },
+    {
+      "file": "app/inspection/[id]/page.tsx",
+      "line": 96,
+      "table": "room_inspections",
+      "method": "eq"
+    },
+    {
+      "file": "app/inspection/[id]/page.tsx",
+      "line": 96,
+      "table": "room_inspections",
+      "method": "select"
+    },
+    {
+      "file": "app/maintenance/[id]/page.tsx",
+      "line": 95,
+      "table": "maintenance_requests",
+      "method": "eq"
+    },
+    {
+      "file": "app/maintenance/[id]/page.tsx",
+      "line": 95,
+      "table": "maintenance_requests",
+      "method": "select"
+    },
+    {
+      "file": "app/maintenance/[id]/page.tsx",
+      "line": 102,
+      "table": "maintenance_photos",
+      "method": "order"
+    },
+    {
+      "file": "app/maintenance/[id]/page.tsx",
+      "line": 102,
+      "table": "maintenance_photos",
+      "method": "eq"
+    },
+    {
+      "file": "app/maintenance/[id]/page.tsx",
+      "line": 102,
+      "table": "maintenance_photos",
+      "method": "select"
+    },
+    {
+      "file": "app/maintenance/[id]/page.tsx",
+      "line": 120,
+      "table": "residents",
+      "method": "eq"
+    },
+    {
+      "file": "app/maintenance/[id]/page.tsx",
+      "line": 120,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/maintenance/[id]/page.tsx",
+      "line": 127,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/maintenance/[id]/page.tsx",
+      "line": 127,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/maintenance/[id]/page.tsx",
+      "line": 134,
+      "table": "rooms",
+      "method": "eq"
+    },
+    {
+      "file": "app/maintenance/[id]/page.tsx",
+      "line": 134,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/maintenance/[id]/page.tsx",
+      "line": 141,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "app/maintenance/[id]/page.tsx",
+      "line": 141,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "app/maintenance/[id]/page.tsx",
+      "line": 181,
+      "table": "maintenance_requests",
+      "method": "eq"
+    },
+    {
+      "file": "app/maintenance/[id]/page.tsx",
+      "line": 181,
+      "table": "maintenance_requests",
+      "method": "update"
+    },
+    {
+      "file": "app/maintenance/[id]/page.tsx",
+      "line": 220,
+      "table": "maintenance_requests",
+      "method": "eq"
+    },
+    {
+      "file": "app/maintenance/[id]/page.tsx",
+      "line": 220,
+      "table": "maintenance_requests",
+      "method": "update"
+    },
+    {
+      "file": "app/maintenance/[id]/page.tsx",
+      "line": 251,
+      "table": "maintenance_requests",
+      "method": "eq"
+    },
+    {
+      "file": "app/maintenance/[id]/page.tsx",
+      "line": 251,
+      "table": "maintenance_requests",
+      "method": "update"
+    },
+    {
+      "file": "app/maintenance/[id]/page.tsx",
+      "line": 280,
+      "table": "maintenance_requests",
+      "method": "eq"
+    },
+    {
+      "file": "app/maintenance/[id]/page.tsx",
+      "line": 280,
+      "table": "maintenance_requests",
+      "method": "update"
+    },
+    {
+      "file": "app/notices/[id]/page.tsx",
+      "line": 38,
+      "table": "notices",
+      "method": "eq"
+    },
+    {
+      "file": "app/notices/[id]/page.tsx",
+      "line": 38,
+      "table": "notices",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/contract/page.tsx",
+      "line": 191,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/contract/page.tsx",
+      "line": 191,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/contract/page.tsx",
+      "line": 191,
+      "table": "contracts",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/contract/page.tsx",
+      "line": 199,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/contract/page.tsx",
+      "line": 199,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/contract/page.tsx",
+      "line": 199,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/contract/page.tsx",
+      "line": 255,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/contract/page.tsx",
+      "line": 255,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/contract/page.tsx",
+      "line": 255,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/contract/page.tsx",
+      "line": 255,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/contract/page.tsx",
+      "line": 255,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/contract/page.tsx",
+      "line": 255,
+      "table": "contracts",
+      "method": "update"
+    },
+    {
+      "file": "app/resident-portal/inspections/page.tsx",
+      "line": 94,
+      "table": "room_inspections",
+      "method": "order"
+    },
+    {
+      "file": "app/resident-portal/inspections/page.tsx",
+      "line": 94,
+      "table": "room_inspections",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/inspections/page.tsx",
+      "line": 94,
+      "table": "room_inspections",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/inspections/page.tsx",
+      "line": 101,
+      "table": "inspections",
+      "method": "order"
+    },
+    {
+      "file": "app/resident-portal/inspections/page.tsx",
+      "line": 101,
+      "table": "inspections",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/inspections/page.tsx",
+      "line": 101,
+      "table": "inspections",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/inspections/page.tsx",
+      "line": 106,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/inspections/page.tsx",
+      "line": 107,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/maintenance/page.tsx",
+      "line": 82,
+      "table": "maintenance_requests",
+      "method": "order"
+    },
+    {
+      "file": "app/resident-portal/maintenance/page.tsx",
+      "line": 82,
+      "table": "maintenance_requests",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/maintenance/page.tsx",
+      "line": 82,
+      "table": "maintenance_requests",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/maintenance/page.tsx",
+      "line": 89,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/maintenance/page.tsx",
+      "line": 89,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/maintenance/page.tsx",
+      "line": 89,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/maintenance/page.tsx",
+      "line": 118,
+      "table": "maintenance_photos",
+      "method": "order"
+    },
+    {
+      "file": "app/resident-portal/maintenance/page.tsx",
+      "line": 118,
+      "table": "maintenance_photos",
+      "method": "in"
+    },
+    {
+      "file": "app/resident-portal/maintenance/page.tsx",
+      "line": 118,
+      "table": "maintenance_photos",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/maintenance/page.tsx",
+      "line": 206,
+      "table": "admissions",
+      "method": "order"
+    },
+    {
+      "file": "app/resident-portal/maintenance/page.tsx",
+      "line": 206,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/maintenance/page.tsx",
+      "line": 206,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/maintenance/page.tsx",
+      "line": 206,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/maintenance/page.tsx",
+      "line": 224,
+      "table": "rooms",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/maintenance/page.tsx",
+      "line": 224,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/maintenance/page.tsx",
+      "line": 241,
+      "table": "maintenance_requests",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/maintenance/page.tsx",
+      "line": 241,
+      "table": "maintenance_requests",
+      "method": "insert"
+    },
+    {
+      "file": "app/resident-portal/maintenance/page.tsx",
+      "line": 288,
+      "table": "maintenance_photos",
+      "method": "insert"
+    },
+    {
+      "file": "app/resident-portal/notices/page.tsx",
+      "line": 19,
+      "table": "notices",
+      "method": "order"
+    },
+    {
+      "file": "app/resident-portal/notices/page.tsx",
+      "line": 19,
+      "table": "notices",
+      "method": "order"
+    },
+    {
+      "file": "app/resident-portal/notices/page.tsx",
+      "line": 19,
+      "table": "notices",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/notices/page.tsx",
+      "line": 19,
+      "table": "notices",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/notices/page.tsx",
+      "line": 20,
+      "table": "admissions",
+      "method": "order"
+    },
+    {
+      "file": "app/resident-portal/notices/page.tsx",
+      "line": 20,
+      "table": "admissions",
+      "method": "in"
+    },
+    {
+      "file": "app/resident-portal/notices/page.tsx",
+      "line": 20,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/notices/page.tsx",
+      "line": 20,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/notices/page.tsx",
+      "line": 21,
+      "table": "notice_recipients",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/notices/page.tsx",
+      "line": 21,
+      "table": "notice_recipients",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/payments/page.tsx",
+      "line": 495,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/payments/page.tsx",
+      "line": 495,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/payments/page.tsx",
+      "line": 495,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/payments/page.tsx",
+      "line": 506,
+      "table": "admissions",
+      "method": "in"
+    },
+    {
+      "file": "app/resident-portal/payments/page.tsx",
+      "line": 506,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/payments/page.tsx",
+      "line": 506,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/payments/page.tsx",
+      "line": 506,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/payments/page.tsx",
+      "line": 517,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/payments/page.tsx",
+      "line": 517,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/payments/page.tsx",
+      "line": 517,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/payments/page.tsx",
+      "line": 517,
+      "table": "payments",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/payments/page.tsx",
+      "line": 541,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/payments/page.tsx",
+      "line": 541,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/payments/page.tsx",
+      "line": 541,
+      "table": "payments",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/payments/page.tsx",
+      "line": 542,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/payments/page.tsx",
+      "line": 542,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/payments/page.tsx",
+      "line": 542,
+      "table": "payment_receipts",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/payments/page.tsx",
+      "line": 574,
+      "table": "payment_receipts",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/payments/page.tsx",
+      "line": 574,
+      "table": "payment_receipts",
+      "method": "insert"
+    },
+    {
+      "file": "app/resident-portal/profile/page.tsx",
+      "line": 42,
+      "table": "residents",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/profile/page.tsx",
+      "line": 42,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/rooms/add/page.tsx",
+      "line": 36,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/rooms/add/page.tsx",
+      "line": 36,
+      "table": "rooms",
+      "method": "insert"
+    },
+    {
+      "file": "app/api/admin/data-management/route.ts",
+      "line": 52,
+      "table": "admin_data_action_audits",
+      "method": "insert"
+    },
+    {
+      "file": "app/api/admin/data-management/route.ts",
+      "line": 70,
+      "table": "residents",
+      "method": "order"
+    },
+    {
+      "file": "app/api/admin/data-management/route.ts",
+      "line": 70,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/api/admin/data-management/route.ts",
+      "line": 163,
+      "table": "residents",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/admin/data-management/route.ts",
+      "line": 163,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/api/admin/staff-users/route.ts",
+      "line": 19,
+      "table": "staff_users",
+      "method": "order"
+    },
+    {
+      "file": "app/api/admin/staff-users/route.ts",
+      "line": 19,
+      "table": "staff_users",
+      "method": "select"
+    },
+    {
+      "file": "app/api/admin/staff-users/route.ts",
+      "line": 124,
+      "table": "staff_users",
+      "method": "select"
+    },
+    {
+      "file": "app/api/admin/staff-users/route.ts",
+      "line": 124,
+      "table": "staff_users",
+      "method": "upsert"
+    },
+    {
+      "file": "app/api/admin/staff-users/route.ts",
+      "line": 217,
+      "table": "staff_users",
+      "method": "select"
+    },
+    {
+      "file": "app/api/admin/staff-users/route.ts",
+      "line": 217,
+      "table": "staff_users",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/admin/staff-users/route.ts",
+      "line": 217,
+      "table": "staff_users",
+      "method": "update"
+    },
+    {
+      "file": "app/api/admin/staff-users/route.ts",
+      "line": 268,
+      "table": "staff_users",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/billing/approve/route.ts",
+      "line": 71,
+      "table": "bills",
+      "method": "in"
+    },
+    {
+      "file": "app/api/billing/approve/route.ts",
+      "line": 71,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "app/api/billing/approve/route.ts",
+      "line": 85,
+      "table": "residents",
+      "method": "in"
+    },
+    {
+      "file": "app/api/billing/approve/route.ts",
+      "line": 85,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/api/billing/approve/route.ts",
+      "line": 131,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "app/api/billing/approve/route.ts",
+      "line": 131,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/billing/approve/route.ts",
+      "line": 131,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/billing/approve/route.ts",
+      "line": 131,
+      "table": "bills",
+      "method": "update"
+    },
+    {
+      "file": "app/api/billing/bulk-generate/route.ts",
+      "line": 65,
+      "table": "admissions",
+      "method": "order"
+    },
+    {
+      "file": "app/api/billing/bulk-generate/route.ts",
+      "line": 65,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/billing/bulk-generate/route.ts",
+      "line": 65,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/api/billing/bulk-generate/route.ts",
+      "line": 70,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/billing/bulk-generate/route.ts",
+      "line": 70,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "app/api/billing/bulk-generate/route.ts",
+      "line": 111,
+      "table": "residents",
+      "method": "in"
+    },
+    {
+      "file": "app/api/billing/bulk-generate/route.ts",
+      "line": 111,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/api/billing/bulk-generate/route.ts",
+      "line": 115,
+      "table": "contracts",
+      "method": "in"
+    },
+    {
+      "file": "app/api/billing/bulk-generate/route.ts",
+      "line": 115,
+      "table": "contracts",
+      "method": "select"
+    },
+    {
+      "file": "app/api/billing/bulk-generate/route.ts",
+      "line": 120,
+      "table": "ac_bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/billing/bulk-generate/route.ts",
+      "line": 120,
+      "table": "ac_bills",
+      "method": "select"
+    },
+    {
+      "file": "app/api/billing/bulk-generate/route.ts",
+      "line": 233,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "app/api/billing/bulk-generate/route.ts",
+      "line": 233,
+      "table": "bills",
+      "method": "insert"
+    },
+    {
+      "file": "app/api/billing/bulk-generate/route.ts",
+      "line": 254,
+      "table": "ac_bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/billing/bulk-generate/route.ts",
+      "line": 254,
+      "table": "ac_bills",
+      "method": "update"
+    },
+    {
+      "file": "app/api/contracts/review/route.ts",
+      "line": 12,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/contracts/review/route.ts",
+      "line": 12,
+      "table": "contracts",
+      "method": "select"
+    },
+    {
+      "file": "app/api/contracts/review/route.ts",
+      "line": 16,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/contracts/review/route.ts",
+      "line": 16,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/contracts/review/route.ts",
+      "line": 16,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/api/contracts/review/route.ts",
+      "line": 21,
+      "table": "contracts",
+      "method": "select"
+    },
+    {
+      "file": "app/api/contracts/review/route.ts",
+      "line": 21,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/contracts/review/route.ts",
+      "line": 21,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/contracts/review/route.ts",
+      "line": 21,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/contracts/review/route.ts",
+      "line": 21,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/contracts/review/route.ts",
+      "line": 21,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/contracts/review/route.ts",
+      "line": 21,
+      "table": "contracts",
+      "method": "update"
+    },
+    {
+      "file": "app/api/notifications/events/route.ts",
+      "line": 39,
+      "table": "staff_users",
+      "method": "ilike"
+    },
+    {
+      "file": "app/api/notifications/events/route.ts",
+      "line": 39,
+      "table": "staff_users",
+      "method": "select"
+    },
+    {
+      "file": "app/api/notifications/events/route.ts",
+      "line": 41,
+      "table": "notification_deliveries",
+      "method": "order"
+    },
+    {
+      "file": "app/api/notifications/events/route.ts",
+      "line": 41,
+      "table": "notification_deliveries",
+      "method": "select"
+    },
+    {
+      "file": "app/api/notifications/events/route.ts",
+      "line": 96,
+      "table": "staff_users",
+      "method": "ilike"
+    },
+    {
+      "file": "app/api/notifications/events/route.ts",
+      "line": 96,
+      "table": "staff_users",
+      "method": "select"
+    },
+    {
+      "file": "app/api/notifications/events/route.ts",
+      "line": 113,
+      "table": "residents",
+      "method": "ilike"
+    },
+    {
+      "file": "app/api/notifications/events/route.ts",
+      "line": 113,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/api/notifications/events/route.ts",
+      "line": 118,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/notifications/events/route.ts",
+      "line": 118,
+      "table": "payment_receipts",
+      "method": "select"
+    },
+    {
+      "file": "app/api/payment-verification/cancel/route.ts",
+      "line": 21,
+      "table": "staff_users",
+      "method": "ilike"
+    },
+    {
+      "file": "app/api/payment-verification/cancel/route.ts",
+      "line": 21,
+      "table": "staff_users",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/combined-payment/route.ts",
+      "line": 40,
+      "table": "residents",
+      "method": "ilike"
+    },
+    {
+      "file": "app/api/resident-portal/combined-payment/route.ts",
+      "line": 40,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/combined-payment/route.ts",
+      "line": 59,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/combined-payment/route.ts",
+      "line": 59,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/combined-payment/route.ts",
+      "line": 59,
+      "table": "payments",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/combined-payment/route.ts",
+      "line": 60,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/combined-payment/route.ts",
+      "line": 60,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/combined-payment/route.ts",
+      "line": 60,
+      "table": "payment_receipts",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/data/route.ts",
+      "line": 55,
+      "table": "residents",
+      "method": "ilike"
+    },
+    {
+      "file": "app/api/resident-portal/data/route.ts",
+      "line": 55,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/data/route.ts",
+      "line": 77,
+      "table": "admissions",
+      "method": "order"
+    },
+    {
+      "file": "app/api/resident-portal/data/route.ts",
+      "line": 77,
+      "table": "admissions",
+      "method": "in"
+    },
+    {
+      "file": "app/api/resident-portal/data/route.ts",
+      "line": 77,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/data/route.ts",
+      "line": 77,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/data/route.ts",
+      "line": 97,
+      "table": "contracts",
+      "method": "order"
+    },
+    {
+      "file": "app/api/resident-portal/data/route.ts",
+      "line": 97,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/data/route.ts",
+      "line": 97,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/data/route.ts",
+      "line": 97,
+      "table": "contracts",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/data/route.ts",
+      "line": 106,
+      "table": "bills",
+      "method": "order"
+    },
+    {
+      "file": "app/api/resident-portal/data/route.ts",
+      "line": 106,
+      "table": "bills",
+      "method": "neq"
+    },
+    {
+      "file": "app/api/resident-portal/data/route.ts",
+      "line": 106,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/data/route.ts",
+      "line": 106,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/data/route.ts",
+      "line": 114,
+      "table": "payments",
+      "method": "order"
+    },
+    {
+      "file": "app/api/resident-portal/data/route.ts",
+      "line": 114,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/data/route.ts",
+      "line": 114,
+      "table": "payments",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/data/route.ts",
+      "line": 121,
+      "table": "payment_receipts",
+      "method": "order"
+    },
+    {
+      "file": "app/api/resident-portal/data/route.ts",
+      "line": 121,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/data/route.ts",
+      "line": 121,
+      "table": "payment_receipts",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/data/route.ts",
+      "line": 127,
+      "table": "rooms",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/data/route.ts",
+      "line": 127,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/data/route.ts",
+      "line": 134,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/data/route.ts",
+      "line": 134,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/deposit-receipts/route.ts",
+      "line": 66,
+      "table": "residents",
+      "method": "ilike"
+    },
+    {
+      "file": "app/api/resident-portal/deposit-receipts/route.ts",
+      "line": 66,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/deposit-receipts/route.ts",
+      "line": 83,
+      "table": "admissions",
+      "method": "order"
+    },
+    {
+      "file": "app/api/resident-portal/deposit-receipts/route.ts",
+      "line": 83,
+      "table": "admissions",
+      "method": "gt"
+    },
+    {
+      "file": "app/api/resident-portal/deposit-receipts/route.ts",
+      "line": 83,
+      "table": "admissions",
+      "method": "in"
+    },
+    {
+      "file": "app/api/resident-portal/deposit-receipts/route.ts",
+      "line": 83,
+      "table": "admissions",
+      "method": "in"
+    },
+    {
+      "file": "app/api/resident-portal/deposit-receipts/route.ts",
+      "line": 83,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/deposit-receipts/route.ts",
+      "line": 83,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/deposit-receipts/route.ts",
+      "line": 83,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/deposit-receipts/route.ts",
+      "line": 116,
+      "table": "bills",
+      "method": "neq"
+    },
+    {
+      "file": "app/api/resident-portal/deposit-receipts/route.ts",
+      "line": 116,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/deposit-receipts/route.ts",
+      "line": 116,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/deposit-receipts/route.ts",
+      "line": 116,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/deposit-receipts/route.ts",
+      "line": 116,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/deposit-receipts/route.ts",
+      "line": 120,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/deposit-receipts/route.ts",
+      "line": 120,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/deposit-receipts/route.ts",
+      "line": 120,
+      "table": "payments",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/deposit-receipts/route.ts",
+      "line": 125,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/deposit-receipts/route.ts",
+      "line": 125,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/deposit-receipts/route.ts",
+      "line": 125,
+      "table": "payment_receipts",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/deposit-receipts/route.ts",
+      "line": 131,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/deposit-receipts/route.ts",
+      "line": 131,
+      "table": "payments",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/deposit-receipts/route.ts",
+      "line": 132,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/deposit-receipts/route.ts",
+      "line": 132,
+      "table": "payment_receipts",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/deposit-receipts/route.ts",
+      "line": 168,
+      "table": "payment_receipts",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/deposit-receipts/route.ts",
+      "line": 168,
+      "table": "payment_receipts",
+      "method": "insert"
+    },
+    {
+      "file": "app/api/residents/create-login/route.ts",
+      "line": 100,
+      "table": "staff_users",
+      "method": "select"
+    },
+    {
+      "file": "app/api/residents/create-login/route.ts",
+      "line": 157,
+      "table": "residents",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/residents/create-login/route.ts",
+      "line": 157,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/edit/[id]/page.tsx",
+      "line": 67,
+      "table": "residents",
+      "method": "order"
+    },
+    {
+      "file": "app/contracts/edit/[id]/page.tsx",
+      "line": 67,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/edit/[id]/page.tsx",
+      "line": 71,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/contracts/edit/[id]/page.tsx",
+      "line": 71,
+      "table": "contracts",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/edit/[id]/page.tsx",
+      "line": 141,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/contracts/edit/[id]/page.tsx",
+      "line": 141,
+      "table": "contracts",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/edit/[id]/page.tsx",
+      "line": 181,
+      "table": "contracts",
+      "method": "select"
+    },
+    {
+      "file": "app/contracts/edit/[id]/page.tsx",
+      "line": 181,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/contracts/edit/[id]/page.tsx",
+      "line": 181,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "app/contracts/edit/[id]/page.tsx",
+      "line": 181,
+      "table": "contracts",
+      "method": "update"
+    },
+    {
+      "file": "app/dashboard/complaints/add/page.tsx",
+      "line": 25,
+      "table": "residents",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/complaints/add/page.tsx",
+      "line": 25,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/complaints/add/page.tsx",
+      "line": 53,
+      "table": "complaints",
+      "method": "insert"
+    },
+    {
+      "file": "app/dashboard/inventory/add/page.tsx",
+      "line": 66,
+      "table": "inventory_categories",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/inventory/add/page.tsx",
+      "line": 66,
+      "table": "inventory_categories",
+      "method": "eq"
+    },
+    {
+      "file": "app/dashboard/inventory/add/page.tsx",
+      "line": 66,
+      "table": "inventory_categories",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/inventory/add/page.tsx",
+      "line": 196,
+      "table": "inventory",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/inventory/add/page.tsx",
+      "line": 196,
+      "table": "inventory",
+      "method": "insert"
+    },
+    {
+      "file": "app/dashboard/inventory/add/page.tsx",
+      "line": 227,
+      "table": "inventory_movements",
+      "method": "insert"
+    },
+    {
+      "file": "app/dashboard/inventory/issue/page.tsx",
+      "line": 132,
+      "table": "inventory",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/inventory/issue/page.tsx",
+      "line": 132,
+      "table": "inventory",
+      "method": "gt"
+    },
+    {
+      "file": "app/dashboard/inventory/issue/page.tsx",
+      "line": 132,
+      "table": "inventory",
+      "method": "eq"
+    },
+    {
+      "file": "app/dashboard/inventory/issue/page.tsx",
+      "line": 132,
+      "table": "inventory",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/inventory/issue/page.tsx",
+      "line": 141,
+      "table": "rooms",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/inventory/issue/page.tsx",
+      "line": 141,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/inventory/issue/page.tsx",
+      "line": 146,
+      "table": "beds",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/inventory/issue/page.tsx",
+      "line": 146,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/inventory/issue/page.tsx",
+      "line": 151,
+      "table": "residents",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/inventory/issue/page.tsx",
+      "line": 151,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/inventory/issue/page.tsx",
+      "line": 156,
+      "table": "staff",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/inventory/issue/page.tsx",
+      "line": 156,
+      "table": "staff",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/inventory/issue/page.tsx",
+      "line": 260,
+      "table": "inventory_assignments",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/inventory/issue/page.tsx",
+      "line": 260,
+      "table": "inventory_assignments",
+      "method": "insert"
+    },
+    {
+      "file": "app/dashboard/inventory/issue/page.tsx",
+      "line": 303,
+      "table": "inventory_movements",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/inventory/issue/page.tsx",
+      "line": 303,
+      "table": "inventory_movements",
+      "method": "insert"
+    },
+    {
+      "file": "app/dashboard/inventory/issue/page.tsx",
+      "line": 327,
+      "table": "inventory_assignments",
+      "method": "eq"
+    },
+    {
+      "file": "app/dashboard/inventory/issue/page.tsx",
+      "line": 343,
+      "table": "inventory",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/inventory/issue/page.tsx",
+      "line": 343,
+      "table": "inventory",
+      "method": "eq"
+    },
+    {
+      "file": "app/dashboard/inventory/issue/page.tsx",
+      "line": 343,
+      "table": "inventory",
+      "method": "eq"
+    },
+    {
+      "file": "app/dashboard/inventory/issue/page.tsx",
+      "line": 343,
+      "table": "inventory",
+      "method": "update"
+    },
+    {
+      "file": "app/dashboard/inventory/issue/page.tsx",
+      "line": 369,
+      "table": "inventory_movements",
+      "method": "eq"
+    },
+    {
+      "file": "app/dashboard/inventory/issue/page.tsx",
+      "line": 374,
+      "table": "inventory_assignments",
+      "method": "eq"
+    },
+    {
+      "file": "app/dashboard/notices/add/page.tsx",
+      "line": 184,
+      "table": "rooms",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/notices/add/page.tsx",
+      "line": 184,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/notices/add/page.tsx",
+      "line": 191,
+      "table": "residents",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/notices/add/page.tsx",
+      "line": 191,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/notices/add/page.tsx",
+      "line": 198,
+      "table": "staff",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/notices/add/page.tsx",
+      "line": 198,
+      "table": "staff",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/staff/add/page.tsx",
+      "line": 34,
+      "table": "staff",
+      "method": "insert"
+    },
+    {
+      "file": "app/dashboard/visitors/add/page.tsx",
+      "line": 26,
+      "table": "residents",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/visitors/add/page.tsx",
+      "line": 26,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/visitors/add/page.tsx",
+      "line": 54,
+      "table": "visitors",
+      "method": "insert"
+    },
+    {
+      "file": "app/resident-portal/inspections/[id]/page.tsx",
+      "line": 79,
+      "table": "room_inspections",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/inspections/[id]/page.tsx",
+      "line": 79,
+      "table": "room_inspections",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/inspections/[id]/page.tsx",
+      "line": 104,
+      "table": "residents",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/inspections/[id]/page.tsx",
+      "line": 104,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/inspections/[id]/page.tsx",
+      "line": 107,
+      "table": "rooms",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/inspections/[id]/page.tsx",
+      "line": 107,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/resident-portal/inspections/[id]/page.tsx",
+      "line": 110,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "app/resident-portal/inspections/[id]/page.tsx",
+      "line": 110,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "app/api/residents/create-login/reset-password/route.ts",
+      "line": 84,
+      "table": "staff_users",
+      "method": "ilike"
+    },
+    {
+      "file": "app/api/residents/create-login/reset-password/route.ts",
+      "line": 84,
+      "table": "staff_users",
+      "method": "select"
+    },
+    {
+      "file": "app/api/residents/create-login/reset-password/route.ts",
+      "line": 113,
+      "table": "residents",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/residents/create-login/reset-password/route.ts",
+      "line": 113,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/inventory/edit/[id]/page.tsx",
+      "line": 80,
+      "table": "inventory_categories",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/inventory/edit/[id]/page.tsx",
+      "line": 80,
+      "table": "inventory_categories",
+      "method": "eq"
+    },
+    {
+      "file": "app/dashboard/inventory/edit/[id]/page.tsx",
+      "line": 80,
+      "table": "inventory_categories",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/inventory/edit/[id]/page.tsx",
+      "line": 86,
+      "table": "inventory",
+      "method": "eq"
+    },
+    {
+      "file": "app/dashboard/inventory/edit/[id]/page.tsx",
+      "line": 86,
+      "table": "inventory",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/inventory/edit/[id]/page.tsx",
+      "line": 291,
+      "table": "inventory",
+      "method": "eq"
+    },
+    {
+      "file": "app/dashboard/inventory/edit/[id]/page.tsx",
+      "line": 291,
+      "table": "inventory",
+      "method": "update"
+    },
+    {
+      "file": "app/dashboard/notices/edit/[id]/page.tsx",
+      "line": 152,
+      "table": "notices",
+      "method": "eq"
+    },
+    {
+      "file": "app/dashboard/notices/edit/[id]/page.tsx",
+      "line": 152,
+      "table": "notices",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/notices/edit/[id]/page.tsx",
+      "line": 158,
+      "table": "rooms",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/notices/edit/[id]/page.tsx",
+      "line": 158,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/notices/edit/[id]/page.tsx",
+      "line": 163,
+      "table": "residents",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/notices/edit/[id]/page.tsx",
+      "line": 163,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/notices/edit/[id]/page.tsx",
+      "line": 168,
+      "table": "staff",
+      "method": "order"
+    },
+    {
+      "file": "app/dashboard/notices/edit/[id]/page.tsx",
+      "line": 168,
+      "table": "staff",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/notices/edit/[id]/page.tsx",
+      "line": 172,
+      "table": "notice_recipients",
+      "method": "eq"
+    },
+    {
+      "file": "app/dashboard/notices/edit/[id]/page.tsx",
+      "line": 172,
+      "table": "notice_recipients",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/staff/edit/[id]/page.tsx",
+      "line": 33,
+      "table": "staff",
+      "method": "eq"
+    },
+    {
+      "file": "app/dashboard/staff/edit/[id]/page.tsx",
+      "line": 33,
+      "table": "staff",
+      "method": "select"
+    },
+    {
+      "file": "app/dashboard/staff/edit/[id]/page.tsx",
+      "line": 116,
+      "table": "staff",
+      "method": "eq"
+    },
+    {
+      "file": "app/dashboard/staff/edit/[id]/page.tsx",
+      "line": 116,
+      "table": "staff",
+      "method": "update"
+    },
+    {
+      "file": "app/api/resident-portal/payment-receipts/[source]/[id]/route.ts",
+      "line": 35,
+      "table": "residents",
+      "method": "ilike"
+    },
+    {
+      "file": "app/api/resident-portal/payment-receipts/[source]/[id]/route.ts",
+      "line": 35,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/payment-receipts/[source]/[id]/route.ts",
+      "line": 50,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/payment-receipts/[source]/[id]/route.ts",
+      "line": 50,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/payment-receipts/[source]/[id]/route.ts",
+      "line": 50,
+      "table": "payments",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/payment-receipts/[source]/[id]/route.ts",
+      "line": 60,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/payment-receipts/[source]/[id]/route.ts",
+      "line": 60,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/payment-receipts/[source]/[id]/route.ts",
+      "line": 60,
+      "table": "payment_receipts",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/payment-receipts/[source]/[id]/route.ts",
+      "line": 65,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/payment-receipts/[source]/[id]/route.ts",
+      "line": 65,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/payment-receipts/[source]/[id]/route.ts",
+      "line": 65,
+      "table": "payments",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/payment-receipts/[source]/[id]/route.ts",
+      "line": 78,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/payment-receipts/[source]/[id]/route.ts",
+      "line": 78,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/payment-receipts/[source]/[id]/route.ts",
+      "line": 78,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/payment-receipts/[source]/[id]/route.ts",
+      "line": 79,
+      "table": "admissions",
+      "method": "order"
+    },
+    {
+      "file": "app/api/resident-portal/payment-receipts/[source]/[id]/route.ts",
+      "line": 79,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/payment-receipts/[source]/[id]/route.ts",
+      "line": 79,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/payment-receipts/[source]/[id]/route.ts",
+      "line": 80,
+      "table": "system_settings",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/payment-receipts/[source]/[id]/route.ts",
+      "line": 80,
+      "table": "system_settings",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/payment-receipts/[source]/[id]/route.ts",
+      "line": 84,
+      "table": "rooms",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/payment-receipts/[source]/[id]/route.ts",
+      "line": 84,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "app/api/resident-portal/payment-receipts/[source]/[id]/route.ts",
+      "line": 85,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "app/api/resident-portal/payment-receipts/[source]/[id]/route.ts",
+      "line": 85,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "lib/adminApiAuth.ts",
+      "line": 72,
+      "table": "staff_users",
+      "method": "ilike"
+    },
+    {
+      "file": "lib/adminApiAuth.ts",
+      "line": 72,
+      "table": "staff_users",
+      "method": "select"
+    },
+    {
+      "file": "lib/adminDataManagement.ts",
+      "line": 40,
+      "table": "staff_users",
+      "method": "ilike"
+    },
+    {
+      "file": "lib/adminDataManagement.ts",
+      "line": 40,
+      "table": "staff_users",
+      "method": "select"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 75,
+      "table": "rooms",
+      "method": "eq"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 75,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 76,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 76,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 102,
+      "table": "admissions",
+      "method": "in"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 102,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 102,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 114,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 114,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 114,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 148,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 148,
+      "table": "beds",
+      "method": "update"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 156,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 156,
+      "table": "beds",
+      "method": "update"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 207,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 207,
+      "table": "beds",
+      "method": "in"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 207,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 207,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 207,
+      "table": "beds",
+      "method": "update"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 274,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 274,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 274,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 274,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 274,
+      "table": "beds",
+      "method": "update"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 306,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 306,
+      "table": "beds",
+      "method": "insert"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 367,
+      "table": "rooms",
+      "method": "eq"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 367,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 381,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 381,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 418,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 418,
+      "table": "beds",
+      "method": "insert"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 439,
+      "table": "rooms",
+      "method": "eq"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 439,
+      "table": "rooms",
+      "method": "update"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 459,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 459,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 478,
+      "table": "admissions",
+      "method": "in"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 478,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 478,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 497,
+      "table": "beds",
+      "method": "neq"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 497,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 504,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 504,
+      "table": "beds",
+      "method": "update"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 521,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 521,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 530,
+      "table": "rooms",
+      "method": "eq"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 530,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 541,
+      "table": "rooms",
+      "method": "eq"
+    },
+    {
+      "file": "lib/bedProvisioning.ts",
+      "line": 541,
+      "table": "rooms",
+      "method": "update"
+    },
+    {
+      "file": "lib/contractActions.ts",
+      "line": 7,
+      "table": "staff_users",
+      "method": "ilike"
+    },
+    {
+      "file": "lib/contractActions.ts",
+      "line": 7,
+      "table": "staff_users",
+      "method": "select"
+    },
+    {
+      "file": "lib/financials.ts",
+      "line": 9,
+      "table": "payments",
+      "method": "eq"
+    },
+    {
+      "file": "lib/financials.ts",
+      "line": 9,
+      "table": "payments",
+      "method": "select"
+    },
+    {
+      "file": "lib/financials.ts",
+      "line": 16,
+      "table": "payment_allocations",
+      "method": "eq"
+    },
+    {
+      "file": "lib/financials.ts",
+      "line": 16,
+      "table": "payment_allocations",
+      "method": "select"
+    },
+    {
+      "file": "lib/financials.ts",
+      "line": 36,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "lib/financials.ts",
+      "line": 36,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "lib/financials.ts",
+      "line": 49,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "lib/financials.ts",
+      "line": 49,
+      "table": "bills",
+      "method": "update"
+    },
+    {
+      "file": "lib/financials.ts",
+      "line": 62,
+      "table": "bills",
+      "method": "neq"
+    },
+    {
+      "file": "lib/financials.ts",
+      "line": 62,
+      "table": "bills",
+      "method": "neq"
+    },
+    {
+      "file": "lib/financials.ts",
+      "line": 62,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "lib/financials.ts",
+      "line": 62,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "lib/financials.ts",
+      "line": 62,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "lib/financials.ts",
+      "line": 62,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "lib/financials.ts",
+      "line": 71,
+      "table": "admissions",
+      "method": "in"
+    },
+    {
+      "file": "lib/financials.ts",
+      "line": 71,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "lib/financials.ts",
+      "line": 71,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "lib/financials.ts",
+      "line": 71,
+      "table": "admissions",
+      "method": "update"
+    },
+    {
+      "file": "lib/meterReading.ts",
+      "line": 44,
+      "table": "system_settings",
+      "method": "eq"
+    },
+    {
+      "file": "lib/meterReading.ts",
+      "line": 44,
+      "table": "system_settings",
+      "method": "select"
+    },
+    {
+      "file": "lib/meterReading.ts",
+      "line": 90,
+      "table": "system_settings",
+      "method": "upsert"
+    },
+    {
+      "file": "lib/noticeEditing.ts",
+      "line": 18,
+      "table": "notices",
+      "method": "select"
+    },
+    {
+      "file": "lib/noticeEditing.ts",
+      "line": 18,
+      "table": "notices",
+      "method": "neq"
+    },
+    {
+      "file": "lib/noticeEditing.ts",
+      "line": 18,
+      "table": "notices",
+      "method": "eq"
+    },
+    {
+      "file": "lib/noticeEditing.ts",
+      "line": 18,
+      "table": "notices",
+      "method": "eq"
+    },
+    {
+      "file": "lib/noticeEditing.ts",
+      "line": 18,
+      "table": "notices",
+      "method": "update"
+    },
+    {
+      "file": "lib/noticeEditing.ts",
+      "line": 19,
+      "table": "notices",
+      "method": "select"
+    },
+    {
+      "file": "lib/noticeEditing.ts",
+      "line": 19,
+      "table": "notices",
+      "method": "insert"
+    },
+    {
+      "file": "lib/noticeEditing.ts",
+      "line": 22,
+      "table": "notice_recipients",
+      "method": "eq"
+    },
+    {
+      "file": "lib/noticeEditing.ts",
+      "line": 25,
+      "table": "notice_recipients",
+      "method": "insert"
+    },
+    {
+      "file": "lib/noticeEditing.ts",
+      "line": 28,
+      "table": "notices",
+      "method": "select"
+    },
+    {
+      "file": "lib/noticeEditing.ts",
+      "line": 28,
+      "table": "notices",
+      "method": "eq"
+    },
+    {
+      "file": "lib/noticeEditing.ts",
+      "line": 28,
+      "table": "notices",
+      "method": "eq"
+    },
+    {
+      "file": "lib/noticeEditing.ts",
+      "line": 28,
+      "table": "notices",
+      "method": "eq"
+    },
+    {
+      "file": "lib/noticeEditing.ts",
+      "line": 28,
+      "table": "notices",
+      "method": "update"
+    },
+    {
+      "file": "lib/residentPortalAuth.ts",
+      "line": 20,
+      "table": "residents",
+      "method": "ilike"
+    },
+    {
+      "file": "lib/residentPortalAuth.ts",
+      "line": 20,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "lib/usePermissions.ts",
+      "line": 37,
+      "table": "staff_users",
+      "method": "ilike"
+    },
+    {
+      "file": "lib/usePermissions.ts",
+      "line": 37,
+      "table": "staff_users",
+      "method": "select"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 98,
+      "table": "residents",
+      "method": "eq"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 98,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 128,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 128,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 133,
+      "table": "rooms",
+      "method": "eq"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 133,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 134,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 134,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 135,
+      "table": "contracts",
+      "method": "order"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 135,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 135,
+      "table": "contracts",
+      "method": "select"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 152,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 152,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 163,
+      "table": "payment_receipts",
+      "method": "eq"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 163,
+      "table": "payment_receipts",
+      "method": "select"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 173,
+      "table": "bills",
+      "method": "eq"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 173,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 174,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 174,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 210,
+      "table": "contracts",
+      "method": "eq"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 210,
+      "table": "contracts",
+      "method": "select"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 215,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 215,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 226,
+      "table": "notices",
+      "method": "eq"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 226,
+      "table": "notices",
+      "method": "select"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 237,
+      "table": "residents",
+      "method": "ilike"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 237,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 244,
+      "table": "notice_recipients",
+      "method": "eq"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 244,
+      "table": "notice_recipients",
+      "method": "select"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 253,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 253,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 253,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 269,
+      "table": "residents",
+      "method": "in"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 269,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 298,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 298,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 466,
+      "table": "notification_deliveries",
+      "method": "select"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 466,
+      "table": "notification_deliveries",
+      "method": "insert"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 477,
+      "table": "notification_deliveries",
+      "method": "eq"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 477,
+      "table": "notification_deliveries",
+      "method": "select"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 487,
+      "table": "notification_deliveries",
+      "method": "select"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 487,
+      "table": "notification_deliveries",
+      "method": "eq"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 487,
+      "table": "notification_deliveries",
+      "method": "eq"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 487,
+      "table": "notification_deliveries",
+      "method": "update"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 531,
+      "table": "notification_deliveries",
+      "method": "eq"
+    },
+    {
+      "file": "lib/notifications/server.ts",
+      "line": 531,
+      "table": "notification_deliveries",
+      "method": "update"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 143,
+      "table": "residents",
+      "method": "order"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 143,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 166,
+      "table": "rooms",
+      "method": "order"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 166,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 170,
+      "table": "beds",
+      "method": "order"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 170,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 174,
+      "table": "admissions",
+      "method": "in"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 174,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 317,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 347,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 347,
+      "table": "residents",
+      "method": "insert"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 429,
+      "table": "residents",
+      "method": "eq"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 429,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 434,
+      "table": "rooms",
+      "method": "eq"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 434,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 439,
+      "table": "admissions",
+      "method": "in"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 439,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 439,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 492,
+      "table": "contract_templates",
+      "method": "order"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 492,
+      "table": "contract_templates",
+      "method": "eq"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 492,
+      "table": "contract_templates",
+      "method": "select"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 550,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 550,
+      "table": "beds",
+      "method": "in"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 550,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 550,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 550,
+      "table": "beds",
+      "method": "update"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 578,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 578,
+      "table": "admissions",
+      "method": "insert"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 594,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 594,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 594,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 594,
+      "table": "beds",
+      "method": "update"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 622,
+      "table": "contracts",
+      "method": "insert"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 647,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 647,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 647,
+      "table": "admissions",
+      "method": "eq"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 661,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 661,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 661,
+      "table": "beds",
+      "method": "eq"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 661,
+      "table": "beds",
+      "method": "update"
+    },
+    {
+      "file": "components/admissions/AdmissionForm.tsx",
+      "line": 685,
+      "table": "bills",
+      "method": "insert"
+    },
+    {
+      "file": "components/layout/ProfileDropdown.tsx",
+      "line": 104,
+      "table": "staff_users",
+      "method": "ilike"
+    },
+    {
+      "file": "components/layout/ProfileDropdown.tsx",
+      "line": 104,
+      "table": "staff_users",
+      "method": "select"
+    },
+    {
+      "file": "components/layout/ProfileDropdown.tsx",
+      "line": 308,
+      "table": "staff_users",
+      "method": "eq"
+    },
+    {
+      "file": "components/layout/ProfileDropdown.tsx",
+      "line": 308,
+      "table": "staff_users",
+      "method": "update"
+    },
+    {
+      "file": "components/layout/Sidebar.tsx",
+      "line": 42,
+      "table": "staff_users",
+      "method": "ilike"
+    },
+    {
+      "file": "components/layout/Sidebar.tsx",
+      "line": 42,
+      "table": "staff_users",
+      "method": "select"
+    },
+    {
+      "file": "components/reports/ReportsModule.tsx",
+      "line": 105,
+      "table": "residents",
+      "method": "select"
+    },
+    {
+      "file": "components/reports/ReportsModule.tsx",
+      "line": 106,
+      "table": "rooms",
+      "method": "select"
+    },
+    {
+      "file": "components/reports/ReportsModule.tsx",
+      "line": 107,
+      "table": "beds",
+      "method": "select"
+    },
+    {
+      "file": "components/reports/ReportsModule.tsx",
+      "line": 108,
+      "table": "admissions",
+      "method": "select"
+    },
+    {
+      "file": "components/reports/ReportsModule.tsx",
+      "line": 109,
+      "table": "contracts",
+      "method": "select"
+    },
+    {
+      "file": "components/reports/ReportsModule.tsx",
+      "line": 110,
+      "table": "bills",
+      "method": "select"
+    },
+    {
+      "file": "components/reports/ReportsModule.tsx",
+      "line": 111,
+      "table": "payments",
+      "method": "select"
+    },
+    {
+      "file": "components/reports/ReportsModule.tsx",
+      "line": 112,
+      "table": "room_inspections",
+      "method": "select"
+    },
+    {
+      "file": "components/reports/ReportsModule.tsx",
+      "line": 113,
+      "table": "inspections",
+      "method": "select"
+    },
+    {
+      "file": "components/reports/ReportsModule.tsx",
+      "line": 114,
+      "table": "maintenance_requests",
+      "method": "select"
+    },
+    {
+      "file": "components/reports/ReportsModule.tsx",
+      "line": 115,
+      "table": "notices",
+      "method": "select"
+    }
+  ]
+}

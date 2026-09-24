@@ -1,11 +1,11 @@
+import { bigintId, validDate } from "./canonical";
+
 export type NoticeVisibilityRecord = {
-  id: string;
+  id: string | number;
   audience?: string | null;
-  target_audience?: string | null;
   resident_id?: string | null;
   room_id?: string | null;
   status?: string | null;
-  is_active?: boolean | null;
   publish_date?: string | null;
   expiry_date?: string | null;
   priority?: string | null;
@@ -25,28 +25,26 @@ export function isNoticeVisibleToResident(
   currentDate = currentNoticeDate(),
   selectedNoticeIds: ReadonlySet<string> = new Set(),
 ) {
-  if (normalized(notice.status) !== "published" || notice.is_active === false) {
+  try { bigintId(notice.id); } catch { return false; }
+  if (!residentId) return false;
+  if (normalized(notice.status) !== "published") {
     return false;
   }
 
-  if (notice.publish_date && notice.publish_date > currentDate) return false;
-  if (notice.expiry_date && notice.expiry_date < currentDate) return false;
+  if (!validDate(notice.publish_date) || notice.publish_date > currentDate) return false;
+  if (notice.expiry_date && (!validDate(notice.expiry_date) || notice.expiry_date < notice.publish_date || notice.expiry_date < currentDate)) return false;
 
   const audience = normalized(notice.audience);
-  const target = normalized(notice.target_audience);
 
-  if (["all residents", "all", "residents"].includes(audience)) return true;
+  if (audience === "all residents") return true;
   if (audience === "selected residents") return selectedNoticeIds.has(String(notice.id));
-  if (!audience && target === "all") return true;
   if (
-    audience === "specific resident" ||
-    (!audience && ["resident", "specific resident"].includes(target))
+    audience === "specific resident"
   ) {
     return notice.resident_id === residentId;
   }
   if (
-    audience === "specific room" ||
-    (!audience && ["room", "specific room"].includes(target))
+    audience === "specific room"
   ) {
     return Boolean(roomId) && notice.room_id === roomId;
   }
@@ -82,16 +80,5 @@ export function compareNoticeProminence(
   );
   if (createdDateDifference !== 0) return createdDateDifference;
 
-  return right.id.localeCompare(left.id);
-}
-
-export function residentNoticeTargetFilter(residentId: string, roomId: string) {
-  const filters = [
-    "audience.eq.All Residents",
-    `resident_id.eq.${residentId}`,
-    "and(audience.is.null,target_audience.eq.All)",
-  ];
-
-  if (roomId) filters.push(`room_id.eq.${roomId}`);
-  return filters.join(",");
+  return String(right.id).length - String(left.id).length || String(right.id).localeCompare(String(left.id));
 }

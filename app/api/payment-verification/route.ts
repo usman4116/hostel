@@ -1,3 +1,6 @@
+import { normalizeIdentityEmail } from "@/lib/identity";
+import { paymentBillAmounts } from "@/lib/paymentAllocations";
+import { receiptPurposeError } from "@/lib/paymentObligations";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -33,44 +36,13 @@ function jsonError(error: string, status: number) {
   );
 }
 
-function paymentMethod(notes: unknown) {
-  const match = String(notes ?? "").match(/^Payment method:\s*(.+)$/im);
-  return match?.[1]?.trim() || "Receipt submission";
-}
-
-function paymentNumber(receiptId: string) {
-  return `PAY-${new Date().getFullYear()}-${receiptId
-    .replaceAll("-", "")
-    .slice(0, 8)
-    .toUpperCase()}`;
-}
-
-function billStatus(
-  total: number,
-  paid: number,
-  dueDate: string | null,
-) {
-  const balance = Math.max(roundMoney(total - paid), 0);
-  if (total > 0 && balance === 0) return "Paid";
-  if (paid > 0) return "Partially Paid";
-  if (dueDate) {
-    const endOfDueDate = new Date(`${dueDate}T23:59:59`);
-    if (!Number.isNaN(endOfDueDate.getTime()) && endOfDueDate < new Date()) {
-      return "Overdue";
-    }
-  }
-  return "Pending";
-}
-
 function isSecurityDepositBill(bill: {
   bill_type?: unknown;
   billing_month?: unknown;
   bill_number?: unknown;
 }) {
   return (
-    normalized(bill.bill_type) === "security deposit" ||
-    normalized(bill.billing_month) === "security deposit" ||
-    String(bill.bill_number ?? "").toUpperCase().startsWith("DEP-")
+    normalized(bill.bill_type) === "security deposit"
   );
 }
 
@@ -98,7 +70,7 @@ export async function POST(request: NextRequest) {
     const { data: staff, error: staffError } = await supabaseAdmin
       .from("staff_users")
       .select("id, role, status")
-      .ilike("email", verifier)
+      .eq("email", normalizeIdentityEmail(verifier))
       .maybeSingle();
     if (
       staffError ||
@@ -176,7 +148,7 @@ export async function POST(request: NextRequest) {
       if (
         action === "Verify" &&
         receipt.status === "Verified" &&
-        (depositAdmissionId || existingPayment?.payment_status === "Verified")
+        existingPayment?.payment_status === "Verified"
       ) {
         return NextResponse.json(
           { message: "This receipt was already verified.", alreadyProcessed: true },
@@ -190,6 +162,17 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "Reject") {
+      if (existingPayment?.bill_id === null && existingPayment.id === receipt.payment_id) {
+        const { error: combinedRejectError } = await supabaseAdmin.rpc("reject_payment_with_allocations", {
+          p_payment_id: existingPayment.id,
+          p_receipt_id: receipt.id,
+          p_actor: verifier,
+          p_reason: rejectionReason,
+        });
+        if (combinedRejectError) return jsonError(combinedRejectError.message, 409);
+        const notification = await notifyResidentEvent("payment_rejected", receipt.id);
+        return NextResponse.json({ message: "Combined receipt rejected. No amount was applied to either bill.", notificationWarning: notification.warning }, { headers: { "Cache-Control": "private, no-store" } });
+      }
       if (existingPayment?.payment_status === "Verified") {
         return jsonError(
           "This receipt already has a verified payment and cannot be rejected.",
@@ -197,48 +180,10 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const now = new Date().toISOString();
-      const { data: rejectedReceipt, error: rejectionError } =
-        await supabaseAdmin
-          .from("payment_receipts")
-          .update({
-            status: "Rejected",
-            verified: false,
-            verified_by: null,
-            verified_at: null,
-            remarks: rejectionReason,
-            updated_at: now,
-          })
-          .eq("id", receipt.id)
-          .eq("status", "Pending Verification")
-          .select("id")
-          .maybeSingle();
-      if (rejectionError || !rejectedReceipt) {
-        return jsonError(
-          "The receipt changed before it could be rejected. Refresh and review its current status.",
-          409,
-        );
-      }
-
-      if (existingPayment?.payment_status === "Pending") {
-        const { error: paymentRejectError } = await supabaseAdmin
-          .from("payments")
-          .update({
-            payment_status: "Rejected",
-            verified: false,
-            notes: rejectionReason,
-            updated_at: now,
-          })
-          .eq("id", existingPayment.id)
-          .eq("payment_status", "Pending");
-        if (paymentRejectError) {
-          await notifyResidentEvent("payment_rejected", receipt.id);
-          return jsonError(
-            "The receipt was rejected, but its legacy pending payment could not be updated. It remains unverified and does not affect the bill.",
-            500,
-          );
-        }
-      }
+      const { error: rejectionError } = await supabaseAdmin.rpc("reject_single_payment_receipt", {
+        p_receipt_id: receipt.id, p_actor: verifier, p_reason: rejectionReason,
+      });
+      if (rejectionError) return jsonError(rejectionError.message || "Receipt changed before rejection.", 409);
 
       const notification = await notifyResidentEvent(
         "payment_rejected",
@@ -255,142 +200,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (depositAdmissionId) {
-      if (receipt.bill_id || existingPayment) {
-        return jsonError(
-          "This security deposit receipt is incorrectly linked to a bill or payment.",
-          409,
-        );
-      }
-
-      const { data: admission, error: admissionError } = await supabaseAdmin
-        .from("admissions")
-        .select("id, resident_id, status, security_deposit, deposit_status")
-        .eq("id", depositAdmissionId)
-        .maybeSingle();
-      const receiptAmount = roundMoney(Number(receipt.amount ?? 0));
-      const depositAmount = roundMoney(Number(admission?.security_deposit ?? 0));
-      if (
-        admissionError ||
-        !admission ||
-        admission.resident_id !== receipt.resident_id ||
-        admission.status !== "Pending" ||
-        admission.deposit_status !== "Pending" ||
-        depositAmount <= 0 ||
-        receiptAmount !== depositAmount
-      ) {
-        return jsonError(
-          "This receipt no longer matches an outstanding security deposit for the resident's Pending admission.",
-          409,
-        );
-      }
-
-      const verifiedAt = new Date().toISOString();
-      const { data: claimedReceipt, error: claimError } = await supabaseAdmin
-        .from("payment_receipts")
-        .update({
-          status: "Verified",
-          verified: true,
-          verified_by: verifier,
-          verified_at: verifiedAt,
-          updated_at: verifiedAt,
-        })
-        .eq("id", receipt.id)
-        .eq("resident_id", receipt.resident_id)
-        .eq("status", "Pending Verification")
-        .select("id")
-        .maybeSingle();
-      if (claimError || !claimedReceipt) {
-        return jsonError(
-          "The receipt changed before verification completed. Refresh and review its current status.",
-          409,
-        );
-      }
-
-      const { data: receivedDeposit, error: depositError } = await supabaseAdmin
-        .from("admissions")
-        .update({ deposit_status: "Held", updated_at: verifiedAt })
-        .eq("id", admission.id)
-        .eq("resident_id", receipt.resident_id)
-        .eq("status", "Pending")
-        .eq("deposit_status", "Pending")
-        .eq("security_deposit", admission.security_deposit)
-        .select("id")
-        .maybeSingle();
-      if (depositError || !receivedDeposit) {
-        await supabaseAdmin
-          .from("payment_receipts")
-          .update({
-            status: "Pending Verification",
-            verified: false,
-            verified_by: null,
-            verified_at: null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", receipt.id)
-          .eq("status", "Verified")
-          .eq("verified_at", verifiedAt);
-        return jsonError(
-          "The admission changed during verification. The receipt remains pending; refresh and try again.",
-          409,
-        );
-      }
-
-      // Synchronize any auto-generated security deposit bill for this resident/admission
-      const { data: matchingDepBills } = await supabaseAdmin
-        .from("bills")
-        .select("id, total_amount, paid_amount, balance_amount, bill_status")
-        .eq("resident_id", receipt.resident_id)
-        .or("bill_type.eq.Security Deposit,billing_month.eq.Security Deposit,bill_number.ilike.DEP-%")
-        .neq("bill_status", "Cancelled")
-        .limit(1);
-
-      if (matchingDepBills && matchingDepBills.length > 0) {
-        const depBill = matchingDepBills[0];
-        await supabaseAdmin
-          .from("bills")
-          .update({
-            paid_amount: depBill.total_amount,
-            balance_amount: 0,
-            bill_status: "Paid",
-            updated_at: verifiedAt,
-          })
-          .eq("id", depBill.id);
-
-        const { data: existingBillPayment } = await supabaseAdmin
-          .from("payments")
-          .select("id")
-          .eq("bill_id", depBill.id)
-          .maybeSingle();
-
-        if (!existingBillPayment) {
-          await supabaseAdmin.from("payments").insert({
-            resident_id: receipt.resident_id,
-            bill_id: depBill.id,
-            payment_number: paymentNumber(receipt.id),
-            payment_date: verifiedAt.slice(0, 10),
-            payment_method: paymentMethod(receipt.notes) || "Bank Transfer",
-            reference_number: receipt.reference_number,
-            amount: receiptAmount,
-            payment_status: "Verified",
-            verified: true,
-            verified_by: verifier,
-            verified_at: verifiedAt,
-            notes: "Verified from security deposit receipt.",
-            created_at: verifiedAt,
-            updated_at: verifiedAt,
-          });
-        }
-      }
-
+    if (existingPayment?.bill_id === null && existingPayment.id === receipt.payment_id) {
+      const { data: verified, error: combinedVerifyError } = await supabaseAdmin.rpc("verify_payment_with_allocations", {
+        p_payment_id: existingPayment.id,
+        p_receipt_id: receipt.id,
+        p_verifier: verifier,
+      });
+      if (combinedVerifyError || !verified) return jsonError(combinedVerifyError?.message || "The combined payment could not be verified.", 409);
       const notification = await notifyResidentEvent("payment_verified", receipt.id);
-      return NextResponse.json(
-        {
-          message: "Security deposit receipt verified. The deposit is Held; the admission remains Pending until explicit activation.",
-          notificationWarning: notification.warning,
-        },
-        { headers: { "Cache-Control": "private, no-store" } },
-      );
+      return NextResponse.json({ message: "Combined receipt verified and both bill balances refreshed.", billSummaryUpdated: true, notificationWarning: notification.warning }, { headers: { "Cache-Control": "private, no-store" } });
+    }
+
+    if (depositAdmissionId) {
+      // Legacy unlinked proofs enter the same guarded verification path as bill receipts.
+      const { data: admission, error: admissionError } = await supabaseAdmin
+        .from("admissions").select("id, resident_id, status, deposit_status")
+        .eq("id", depositAdmissionId).eq("resident_id", receipt.resident_id)
+        .in("status", ["Pending", "Active"]).maybeSingle();
+      if (admissionError || !admission || !["Pending", "Held"].includes(admission.deposit_status)) {
+        return jsonError("The deposit does not belong to a current unpaid admission.", 409);
+      }
+      const { data: depositBill, error: depositBillError } = await supabaseAdmin
+        .from("bills").select("id").eq("admission_id", admission.id)
+        .eq("resident_id", receipt.resident_id).eq("bill_type", "Security Deposit")
+        .neq("bill_status", "Cancelled").maybeSingle();
+      if (depositBillError || !depositBill) return jsonError("Create or repair the admission's deposit bill before verifying this proof.", 409);
+      const { data: linked, error: linkError } = await supabaseAdmin.from("payment_receipts")
+        .update({ bill_id: depositBill.id }).eq("id", receipt.id)
+        .is("bill_id", null).eq("status", "Pending Verification").select("id").maybeSingle();
+      if (linkError || !linked) return jsonError("Receipt changed; refresh before verifying.", 409);
+      receipt.bill_id = depositBill.id;
     }
 
     if (!receipt.bill_id) {
@@ -400,7 +239,7 @@ export async function POST(request: NextRequest) {
     const { data: bill, error: billError } = await supabaseAdmin
       .from("bills")
       .select(
-        "id, resident_id, admission_id, total_amount, paid_amount, balance_amount, due_date, bill_status, bill_type, billing_month, bill_number",
+        "id, resident_id, admission_id, total_amount, paid_amount, balance_amount, due_date, bill_status, bill_type, billing_month, bill_number, rent_amount, electricity_amount, ac_amount, other_amount, discount_amount",
       )
       .eq("id", receipt.bill_id)
       .maybeSingle();
@@ -417,16 +256,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!bill.admission_id) return jsonError("Deposit bill requires its admission.", 409);
     if (bill.admission_id) {
       const { data: admission, error: admissionError } = await supabaseAdmin
         .from("admissions")
-        .select("id, resident_id")
+        .select("id, resident_id, status, deposit_status")
         .eq("id", bill.admission_id)
         .maybeSingle();
       if (
         admissionError ||
         !admission ||
-        admission.resident_id !== receipt.resident_id
+        admission.resident_id !== receipt.resident_id ||
+        (isSecurityDepositBill(bill) && (!["Pending", "Active"].includes(admission.status) || admission.deposit_status !== "Pending"))
       ) {
         return jsonError(
           "The bill admission is not linked to the receipt resident.",
@@ -439,27 +280,36 @@ export async function POST(request: NextRequest) {
     const { data: verifiedPayments, error: verifiedPaymentsError } =
       await supabaseAdmin
         .from("payments")
-        .select("id, amount")
-        .eq("bill_id", bill.id)
+        .select("id, bill_id, amount, payment_status, payment_allocations(bill_id,amount)")
         .eq("payment_status", "Verified");
     if (verifiedPaymentsError) {
       return jsonError("The current bill balance could not be confirmed.", 500);
     }
+    const effectivePayments = (verifiedPayments ?? []).flatMap(payment =>
+      paymentBillAmounts(payment, payment.payment_allocations ?? []).filter(a => a.bill_id === bill.id)
+        .map(a => ({ id: payment.id, bill_id: bill.id, amount: a.amount, payment_status: "Verified" })));
     const verifiedTotal = roundMoney(
-      (verifiedPayments ?? []).reduce(
+      effectivePayments.reduce(
         (sum, payment) => sum + Number(payment.amount ?? 0),
         0,
       ),
     );
     const total = roundMoney(Number(bill.total_amount ?? 0));
     const outstanding = Math.max(roundMoney(total - verifiedTotal), 0);
-    if (receiptAmount <= 0 || receiptAmount > outstanding) {
+    if (!Number.isFinite(receiptAmount) || receiptAmount <= 0 || receiptAmount > outstanding) {
       return jsonError(
         "The receipt amount must be positive and cannot exceed the current outstanding balance.",
         409,
       );
     }
 
+    const purpose = String(receipt.notes ?? "").match(/^Payment purpose:[ \t]*(.+)$/im)?.[1]?.trim() ?? "";
+    const notedAdmission = String(receipt.notes ?? "").match(/^Admission ID:[ \t]*(.+)$/im)?.[1]?.trim();
+    if (notedAdmission && notedAdmission !== bill.admission_id) return jsonError("Receipt admission does not match its bill.", 409);
+    if (purpose) {
+      const purposeError = receiptPurposeError(bill, effectivePayments, receiptAmount, purpose);
+      if (purposeError) return jsonError(purposeError, 409);
+    }
     if (receipt.reference_number) {
       let referenceQuery = supabaseAdmin
         .from("payments")
@@ -496,158 +346,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const verifiedAt = new Date().toISOString();
-    const { data: claimedReceipt, error: claimError } = await supabaseAdmin
-      .from("payment_receipts")
-      .update({
-        status: "Verified",
-        verified: true,
-        verified_by: verifier,
-        verified_at: verifiedAt,
-        updated_at: verifiedAt,
-      })
-      .eq("id", receipt.id)
-      .eq("status", "Pending Verification")
-      .select("id")
-      .maybeSingle();
-    if (claimError || !claimedReceipt) {
-      return jsonError(
-        "The receipt changed before verification completed. Refresh and review its current status.",
-        409,
-      );
-    }
-
-    const paid = roundMoney(verifiedTotal + receiptAmount);
-    const balance = Math.max(roundMoney(total - paid), 0);
-    const nextBillStatus = billStatus(total, paid, bill.due_date);
-    const originalPaid = roundMoney(Number(bill.paid_amount ?? 0));
-    const originalBalance = roundMoney(Number(bill.balance_amount ?? 0));
-    const { data: reservedBill, error: billReservationError } =
-      await supabaseAdmin
-        .from("bills")
-        .update({
-          paid_amount: paid,
-          balance_amount: balance,
-          bill_status: nextBillStatus,
-          updated_at: verifiedAt,
-        })
-        .eq("id", bill.id)
-        .eq("resident_id", receipt.resident_id)
-        .eq("paid_amount", originalPaid)
-        .eq("balance_amount", originalBalance)
-        .eq("bill_status", bill.bill_status)
-        .select("id")
-        .maybeSingle();
-    if (billReservationError || !reservedBill) {
-      await supabaseAdmin
-        .from("payment_receipts")
-        .update({
-          status: "Pending Verification",
-          verified: false,
-          verified_by: null,
-          verified_at: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", receipt.id)
-        .eq("status", "Verified")
-        .eq("verified_at", verifiedAt);
-      return jsonError(
-        "The bill changed during verification. The receipt remains pending; refresh and try again.",
-        409,
-      );
-    }
-
-    const paymentPayload = {
-      resident_id: receipt.resident_id,
-      bill_id: receipt.bill_id,
-      payment_date: verifiedAt.slice(0, 10),
-      payment_method: paymentMethod(receipt.notes),
-      reference_number: receipt.reference_number,
-      amount: receiptAmount,
-      payment_status: "Verified",
-      verified: true,
-      verified_by: verifier,
-      verified_at: verifiedAt,
-      updated_at: verifiedAt,
-    };
-
-    const paymentResult = existingPayment
-      ? await supabaseAdmin
-          .from("payments")
-          .update(paymentPayload)
-          .eq("id", existingPayment.id)
-          .eq("payment_status", "Pending")
-          .select("id")
-          .maybeSingle()
-      : await supabaseAdmin
-          .from("payments")
-          .insert({
-            ...paymentPayload,
-            payment_number: paymentNumber(receipt.id),
-            notes: "Verified from a resident receipt submission.",
-          })
-          .select("id")
-          .single();
-
-    if (paymentResult.error || !paymentResult.data) {
-      await supabaseAdmin
-        .from("bills")
-        .update({
-          paid_amount: originalPaid,
-          balance_amount: originalBalance,
-          bill_status: bill.bill_status,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", bill.id)
-        .eq("resident_id", receipt.resident_id)
-        .eq("paid_amount", paid)
-        .eq("balance_amount", balance)
-        .eq("bill_status", nextBillStatus);
-      await supabaseAdmin
-        .from("payment_receipts")
-        .update({
-          status: "Pending Verification",
-          verified: false,
-          verified_by: null,
-          verified_at: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", receipt.id)
-        .eq("status", "Verified")
-        .eq("verified_at", verifiedAt);
-      return jsonError(
-        "The payment could not be recorded, so the receipt remains pending.",
-        500,
-      );
-    }
-
-    const paymentId = paymentResult.data.id;
-    const { error: receiptLinkError } = await supabaseAdmin
-      .from("payment_receipts")
-      .update({ payment_id: paymentId, updated_at: verifiedAt })
-      .eq("id", receipt.id)
-      .eq("status", "Verified")
-      .eq("verified_at", verifiedAt);
-    if (receiptLinkError) {
-      return jsonError(
-        "The payment was verified, but the receipt link could not be finalized. Review the canonical payment before retrying.",
-        500,
-      );
-    }
-
-    if (isSecurityDepositBill(bill) && nextBillStatus === "Paid") {
-      let admissionUpdate = supabaseAdmin
-        .from("admissions")
-        .update({ deposit_status: "Held", updated_at: verifiedAt })
-        .eq("resident_id", receipt.resident_id)
-        .eq("deposit_status", "Pending");
-
-      if (bill.admission_id) {
-        admissionUpdate = admissionUpdate.eq("id", bill.admission_id);
-      }
-
-      await admissionUpdate;
-    }
+    const { data: verified, error: verificationError } = await supabaseAdmin.rpc("verify_single_payment_receipt", {
+      p_receipt_id: receipt.id, p_verifier: verifier,
+    });
+    if (verificationError || !verified) return jsonError(verificationError?.message || "Receipt changed before verification.", 409);
 
     const notification = await notifyResidentEvent(
       "payment_verified",

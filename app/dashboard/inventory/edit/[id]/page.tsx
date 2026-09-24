@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { bigintId } from "@/lib/canonical";
 import { supabase } from "@/lib/supabase";
 
 type Category = {
@@ -105,7 +106,7 @@ export default function EditInventoryPage() {
             notes
           `
           )
-          .eq("id", Number(inventoryId))
+          .eq("id", bigintId(inventoryId))
           .single(),
       ]);
 
@@ -292,7 +293,7 @@ export default function EditInventoryPage() {
       .update({
         asset_code: formData.asset_code.trim(),
         item_name: formData.item_name.trim(),
-        category_id: Number(formData.category_id),
+        category_id: bigintId(formData.category_id),
         quantity: Number(formData.quantity),
         available_quantity: Number(
           formData.available_quantity
@@ -315,7 +316,7 @@ export default function EditInventoryPage() {
         notes: formData.notes.trim() || null,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", Number(inventoryId));
+      .eq("id", bigintId(inventoryId));
 
     if (error) {
       if (error.code === "23505") {

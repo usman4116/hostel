@@ -99,6 +99,5 @@ export async function uploadResidentSignature(
     );
   }
 
-  return supabase.storage.from(SIGNATURE_BUCKET).getPublicUrl(path).data
-    .publicUrl;
+  return path;
 }

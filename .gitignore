@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local validation and Supabase CLI temp files
+.local-checks/
+supabase/.temp/

@@ -63,7 +63,7 @@ export default function AddContractPage() {
           .select("id, resident_id, room_id, bed_id, admission_date, expected_leaving_date, monthly_rent, security_deposit, notice_period_days, status")
           .eq("status", "Pending")
           .order("created_at", { ascending: false }),
-        supabase.from("contracts").select("id, admission_id, status, contract_status"),
+        supabase.from("contracts").select("id, admission_id, status"),
         supabase.from("contract_templates").select("id, title, content").eq("is_active", true).order("created_at", { ascending: false }),
         supabase.from("rooms").select("id, room_number"),
         supabase.from("beds").select("id, bed_number"),
@@ -77,7 +77,7 @@ export default function AddContractPage() {
 
       const existingAdmissionIds = new Set(
         (contractResult.data ?? [])
-          .filter((item) => (item.status || item.contract_status) !== "Cancelled")
+          .filter((item) => (item.status) !== "Cancelled")
           .map((item) => item.admission_id)
           .filter(Boolean),
       );
@@ -159,7 +159,7 @@ export default function AddContractPage() {
         .select("id, resident_id, room_id, bed_id, admission_date, monthly_rent, security_deposit, notice_period_days, status")
         .eq("id", admission.id)
         .maybeSingle(),
-      supabase.from("contracts").select("id, status, contract_status").eq("admission_id", admission.id),
+      supabase.from("contracts").select("id, status").eq("admission_id", admission.id),
     ]);
     const validationError = residentResult.error || admissionResult.error || duplicateResult.error;
     if (validationError) {
@@ -178,7 +178,7 @@ export default function AddContractPage() {
       setSaving(false);
       return;
     }
-    if ((duplicateResult.data ?? []).some((item) => (item.status || item.contract_status) !== "Cancelled")) {
+    if ((duplicateResult.data ?? []).some((item) => (item.status) !== "Cancelled")) {
       setMessage("A contract already exists for this admission.");
       setSaving(false);
       return;
@@ -199,14 +199,12 @@ export default function AddContractPage() {
         bed_id: currentAdmission.bed_id,
         template_id: activeTemplate.id,
         contract_content: termsSnapshot,
-        terms: termsSnapshot,
         start_date: currentAdmission.admission_date,
         end_date: endDate || null,
         monthly_rent: Number(currentAdmission.monthly_rent) || 0,
         security_deposit: Number(currentAdmission.security_deposit) || 0,
         notice_period_days: Number(currentAdmission.notice_period_days) || 30,
         status: "Pending Signature",
-        contract_status: "Pending Signature",
         resident_signature_status: "Pending",
         owner_signature_status: "Pending",
         signed_by_resident: false,

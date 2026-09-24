@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { REPORT_COLUMNS, reportDate } from "@/lib/reportData";
 import { normalizeBedLabel } from "@/lib/bedLabels";
 import { deriveBillStatus, roundMoney } from "@/lib/financials";
 import { BED_STATUS, isVacantBedStatus } from "@/lib/statuses";
@@ -101,16 +102,16 @@ export default function ReportsModule() {
     setLoading(true);
     setError("");
     const results = await Promise.all([
-      supabase.from("residents").select("*"),
-      supabase.from("rooms").select("*"),
-      supabase.from("beds").select("*"),
-      supabase.from("admissions").select("*"),
-      supabase.from("contracts").select("*"),
-      supabase.from("bills").select("*"),
-      supabase.from("payments").select("*"),
-      supabase.from("room_inspections").select("*"),
-      supabase.from("inspections").select("*"),
-      supabase.from("maintenance_requests").select("*"),
+      supabase.from("residents").select(REPORT_COLUMNS.residents),
+      supabase.from("rooms").select(REPORT_COLUMNS.rooms),
+      supabase.from("beds").select(REPORT_COLUMNS.beds),
+      supabase.from("admissions").select(REPORT_COLUMNS.admissions),
+      supabase.from("contracts").select(REPORT_COLUMNS.contracts),
+      supabase.from("bills").select(REPORT_COLUMNS.bills),
+      supabase.from("payments").select(REPORT_COLUMNS.payments),
+      supabase.from("room_inspections").select(REPORT_COLUMNS.room_inspections),
+      supabase.from("inspections").select(REPORT_COLUMNS.inspections),
+      supabase.from("maintenance_requests").select(REPORT_COLUMNS.maintenance_requests),
       supabase.from("notices").select("*"),
     ]);
     const failed = results.find((result) => result.error)?.error;
@@ -152,7 +153,7 @@ export default function ReportsModule() {
       new Map(
         residents.map((row) => [
           text(row.id),
-          first(row, ["full_name", "name"], "Unknown resident"),
+          first(row, ["full_name"], "Unknown resident"),
         ]),
       ),
     [residents],
@@ -162,7 +163,7 @@ export default function ReportsModule() {
       new Map(
         rooms.map((row) => [
           text(row.id),
-          first(row, ["room_number", "name"], "Unknown room"),
+          first(row, ["room_number"], "Unknown room"),
         ]),
       ),
     [rooms],
@@ -172,7 +173,7 @@ export default function ReportsModule() {
       new Map(
         beds.map((row) => [
           text(row.id),
-          normalizeBedLabel(first(row, ["bed_number", "name"], "Bed")),
+          normalizeBedLabel(first(row, ["bed_number"], "Bed")),
         ]),
       ),
     [beds],
@@ -209,8 +210,9 @@ export default function ReportsModule() {
           Bed: bedMap.get(text(row.bed_id)) || "—",
           "Admission Date": day(row.admission_date) || "—",
           "Expected Leaving":
-            day(row.expected_leaving_date ?? row.leaving_date) || "—",
+            day(row.expected_leaving_date) || "—",
           Rent: money(row.monthly_rent),
+          "Security Deposit": money(row.security_deposit),
           Status: first(row, ["status"]),
         },
       }));
@@ -228,10 +230,10 @@ export default function ReportsModule() {
           .filter(Boolean),
         cells: {
           "Resident Code": first(row, ["resident_code"]),
-          Resident: first(row, ["full_name", "name"]),
+          Resident: first(row, ["full_name"]),
           Email: first(row, ["email"]),
           Phone: first(row, ["phone"]),
-          "CNIC / Passport": first(row, ["cnic", "passport_number"]),
+          "CNIC / Passport": first(row, ["cnic"]),
           Status: first(row, ["status"], "Active"),
           "Created Date": day(row.created_at) || "—",
         },
@@ -287,7 +289,7 @@ export default function ReportsModule() {
             roomIds: [roomId],
             cells: {
               Room: roomName(roomId),
-              Bed: normalizeBedLabel(first(bed, ["bed_number", "name"], "Bed")),
+              Bed: normalizeBedLabel(first(bed, ["bed_number"], "Bed")),
               "Bed Status": first(bed, ["status"]),
               "Current Resident": currentAdmission
                 ? residentName(text(currentAdmission.resident_id))
@@ -316,11 +318,11 @@ export default function ReportsModule() {
         const admission = admissions.find(
           (item) => text(item.id) === text(row.admission_id),
         );
-        const roomId = text(row.room_id) || text(admission?.room_id);
+        const roomId = text(admission?.room_id);
         return {
           id: text(row.id),
           date: day(row.start_date ?? row.created_at),
-          status: first(row, ["status", "contract_status"]),
+          status: first(row, ["status"]),
           residentIds: [text(row.resident_id)].filter(Boolean),
           roomIds: [roomId].filter(Boolean),
           cells: {
@@ -338,9 +340,9 @@ export default function ReportsModule() {
             "Owner Signature": first(
               row,
               ["owner_signature_status"],
-              row.owner_signature ? "Signed" : "Pending",
+              "Pending",
             ),
-            Status: first(row, ["status", "contract_status"]),
+            Status: first(row, ["status"]),
           },
         };
       });
@@ -355,7 +357,7 @@ export default function ReportsModule() {
         const total = roundMoney(numberValue(row.total_amount));
         const paid = verifiedByBill.get(billId) ?? 0;
         const sourceStatus = normalized(row.bill_status);
-        const historicalFinancialRecord = ["cancelled", "archived"].includes(
+        const historicalFinancialRecord = ["cancelled", "archived", "draft", "pending approval"].includes(
           sourceStatus,
         );
         const outstanding = historicalFinancialRecord
@@ -370,27 +372,27 @@ export default function ReportsModule() {
               text(row.bill_status),
             );
         const billTypes = [
-          numberValue(row.rent_amount ?? row.room_rent) > 0 ? "Rent" : "",
+          numberValue(row.rent_amount) > 0 ? "Rent" : "",
           numberValue(row.electricity_amount) > 0 ? "Electricity" : "",
-          numberValue(row.ac_amount ?? row.ac_bill) > 0 ? "AC" : "",
+          numberValue(row.ac_amount) > 0 ? "AC" : "",
           numberValue(row.other_amount) > 0 ? "Other" : "",
         ].filter(Boolean);
         return {
           id: billId,
-          date: day(row.billing_month ?? row.created_at),
+          date: reportDate({ billing_month: text(row.billing_month), created_at: text(row.created_at) }, "bills"),
           status,
           residentIds: [text(row.resident_id)].filter(Boolean),
           roomIds: [text(admission?.room_id)].filter(Boolean),
           amounts: { billed: total, paid, outstanding },
           cells: {
             Bill: first(row, ["bill_number"]),
-            Month: day(row.billing_month) || "—",
+            Month: text(row.billing_month) || "—",
             Resident: residentName(text(row.resident_id)),
             Room: roomName(text(admission?.room_id)),
-            "Billing Type": billTypes.join(", ") || "Unspecified",
-            Rent: money(row.rent_amount ?? row.room_rent),
+            "Billing Type": row.bill_type === "Security Deposit" ? "Security Deposit" : billTypes.join(", ") || "Unspecified",
+            Rent: money(row.rent_amount),
             Electricity: money(row.electricity_amount),
-            AC: money(row.ac_amount ?? row.ac_bill),
+            AC: money(row.ac_amount),
             Other: money(row.other_amount),
             Discount: money(row.discount_amount),
             Billed: money(total),
@@ -416,7 +418,7 @@ export default function ReportsModule() {
         return {
           id: text(row.id),
           date: day(row.payment_date ?? row.created_at),
-          status: first(row, ["payment_status", "status"]),
+          status: first(row, ["payment_status"]),
           residentIds: [text(row.resident_id)].filter(Boolean),
           roomIds: [text(admission?.room_id)].filter(Boolean),
           amounts: {
@@ -436,7 +438,7 @@ export default function ReportsModule() {
             Amount: money(row.amount),
             "Verification Status": first(
               row,
-              ["payment_status", "status"],
+              ["payment_status"],
             ),
             "Verified Date": day(row.verified_at) || "—",
           },
@@ -527,7 +529,7 @@ export default function ReportsModule() {
             Priority: first(row, ["priority"]),
             Description: first(
               row,
-              ["title", "description", "complaint_description"],
+              ["description"],
             ),
             Assigned: first(row, ["assigned_to"], "Not assigned"),
             "Estimated Cost": money(estimated),
@@ -539,7 +541,7 @@ export default function ReportsModule() {
     }
 
     return notices.map((row) => {
-      const audience = first(row, ["audience", "target_audience"], "Legacy");
+      const audience = first(row, ["audience"], "Legacy");
       const residentId = text(row.resident_id);
       const roomId = text(row.room_id);
       const target =
@@ -890,7 +892,7 @@ export default function ReportsModule() {
                   <option value="">All Residents</option>
                   {residents.map((resident) => (
                     <option key={text(resident.id)} value={text(resident.id)}>
-                      {first(resident, ["full_name", "name"])}
+                      {first(resident, ["full_name"])}
                     </option>
                   ))}
                 </select>
@@ -907,7 +909,7 @@ export default function ReportsModule() {
                   <option value="">All Rooms</option>
                   {rooms.map((room) => (
                     <option key={text(room.id)} value={text(room.id)}>
-                      {first(room, ["room_number", "name"])}
+                      {first(room, ["room_number"])}
                     </option>
                   ))}
                 </select>

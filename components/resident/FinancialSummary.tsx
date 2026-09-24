@@ -14,7 +14,7 @@ function dateLabel(value: string | null) {
 
 function tone(status: string) {
   const normalized = status.trim().toLowerCase();
-  if (["paid", "received", "verified"].includes(normalized)) return "bg-emerald-100 text-emerald-700";
+  if (["paid", "held", "verified"].includes(normalized)) return "bg-emerald-100 text-emerald-700";
   if (normalized === "overdue") return "bg-red-100 text-red-700";
   if (normalized === "not billed" || normalized === "not required") return "bg-slate-100 text-slate-600";
   return "bg-amber-100 text-amber-700";
@@ -33,16 +33,16 @@ export default function FinancialSummary({ admission, room, bed, bills, payments
       <div className="space-y-5 p-4 sm:p-6">
         <div className={`rounded-2xl border p-5 ${summary.accountStatus === "Overdue" ? "border-red-200 bg-red-50" : summary.totalOutstanding > 0 ? "border-amber-200 bg-amber-50" : "border-emerald-200 bg-emerald-50"}`}>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div><p className="text-sm font-bold uppercase tracking-wide text-slate-600">Total Amount Due</p><p className={`mt-2 text-3xl font-black sm:text-4xl ${summary.accountStatus === "Overdue" ? "text-red-700" : summary.totalOutstanding > 0 ? "text-amber-700" : "text-emerald-700"}`}>{money(summary.totalOutstanding)}</p><p className="mt-2 text-sm text-slate-600">Payment deadline: <strong>{summary.totalOutstanding > 0 ? dateLabel(summary.paymentDeadline) : "No payment due"}</strong></p></div>
+            <div><p className="text-sm font-bold uppercase tracking-wide text-slate-600">Total Payable (Rent + Security Deposit)</p><p className={`mt-2 text-3xl font-black sm:text-4xl ${summary.accountStatus === "Overdue" ? "text-red-700" : summary.totalOutstanding > 0 ? "text-amber-700" : "text-emerald-700"}`}>{money(summary.monthlyRentDue + summary.depositBalance)}</p><p className="mt-2 text-sm text-slate-600">Payment deadline: <strong>{summary.totalOutstanding > 0 ? dateLabel(summary.paymentDeadline) : "No payment due"}</strong></p></div>
             <Status value={summary.accountStatus} />
           </div>
-          <div className="mt-5 grid grid-cols-2 gap-4 border-t border-slate-200/70 pt-4 sm:grid-cols-3 xl:grid-cols-4"><MiniValue label="Monthly rent" value={money(summary.rentCharges)} /><MiniValue label="Utilities" value={money(summary.utilityCharges)} /><MiniValue label="Other charges" value={money(summary.otherCharges)} /><MiniValue label="Discount applied" value={`− ${money(summary.discountApplied)}`} /></div>
-          <div className="mt-4 grid grid-cols-2 gap-4 border-t border-slate-200/70 pt-4 sm:grid-cols-3"><MiniValue label="Total payable" value={money(summary.totalCharges)} /><MiniValue label="Payments received" value={`− ${money(summary.verifiedPayments)}`} /><MiniValue label="Remaining balance" value={money(summary.totalOutstanding)} /></div>
+          <div className="mt-5 grid grid-cols-2 gap-4 border-t border-slate-200/70 pt-4 sm:grid-cols-3 xl:grid-cols-4"><MiniValue label="Rent Due" value={money(summary.monthlyRentDue)} /><MiniValue label="Security Deposit Due" value={money(summary.depositBalance)} /><MiniValue label="Utilities due" value={money(summary.utilityItems.reduce((sum, item) => sum + item.amount, 0))} /><MiniValue label="Other charges due" value={money(summary.otherItems.reduce((sum, item) => sum + item.amount, 0))} /><MiniValue label="Discount applied" value={`− ${money(summary.discountApplied)}`} /></div>
+          <div className="mt-4 grid grid-cols-2 gap-4 border-t border-slate-200/70 pt-4 sm:grid-cols-3"><MiniValue label="Original charges" value={money(summary.totalCharges)} /><MiniValue label="Payments received" value={`− ${money(summary.verifiedPayments)}`} /><MiniValue label="Account outstanding (all charges)" value={money(summary.totalOutstanding)} /></div>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
           <OverviewCard title="Monthly Rent" status={summary.rentStatus}>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total outstanding rent</p><Amount value={summary.monthlyRentDue} /><Detail label="Current monthly rate" value={money(summary.monthlyRent)} /><Detail label="Earliest unpaid due date" value={summary.rentDueDate ? dateLabel(summary.rentDueDate) : summary.rentStatus === "Not Billed" ? "Not billed yet" : "No rent due"} />
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total outstanding rent</p><Amount value={summary.monthlyRentDue} /><div className="grid grid-cols-3 gap-3"><MiniValue label="Original rent" value={money(summary.rentCharges)} /><MiniValue label="Verified paid" value={money(summary.rentPaid)} /><MiniValue label="Balance" value={money(summary.monthlyRentDue)} /></div><Detail label="Current monthly rate" value={money(summary.monthlyRent)} /><Detail label="Earliest unpaid due date" value={summary.rentDueDate ? dateLabel(summary.rentDueDate) : summary.rentStatus === "Not Billed" ? "Not billed yet" : "No rent due"} />
           </OverviewCard>
           <OverviewCard title="Security Deposit" status={summary.depositStatus}>
             <div className="grid grid-cols-3 gap-3"><MiniValue label="Required" value={money(summary.depositRequired)} /><MiniValue label="Paid" value={money(summary.depositPaid)} /><MiniValue label="Remaining" value={money(summary.depositBalance)} /></div>

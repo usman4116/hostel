@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { bigintId } from "@/lib/canonical";
 import { supabase } from "@/lib/supabase";
 
 export default function EditStaffPage() {
@@ -46,7 +47,7 @@ export default function EditStaffPage() {
         address,
         notes
       `)
-      .eq("id", Number(staffId))
+      .eq("id", bigintId(staffId))
       .single();
 
     if (error) {
@@ -130,7 +131,7 @@ export default function EditStaffPage() {
         notes: notes.trim() || null,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", Number(staffId));
+      .eq("id", bigintId(staffId));
 
     setSaving(false);
 

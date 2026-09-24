@@ -7,6 +7,7 @@ import {
   type AuthenticatedResident,
 } from "@/lib/residentPortalAuth";
 import { loadResidentPortalData } from "@/lib/residentPortalData";
+import { paymentBillAmounts } from "@/lib/paymentAllocations";
 import {
   deriveBillStatus,
   roundMoney,
@@ -36,9 +37,10 @@ type Bill = {
 };
 
 type Payment = {
-  bill_id: string;
+  bill_id: string | null;
   amount: number;
   payment_status: string;
+  allocations?: Array<{ bill_id: string; amount: number }>;
 };
 
 const inputClass =
@@ -107,10 +109,9 @@ export default function ResidentBillsPage() {
     const verifiedByBill = new Map<string, number>();
     for (const payment of payments) {
       if (normalized(payment.payment_status) !== "verified") continue;
-      verifiedByBill.set(
-        payment.bill_id,
-        roundMoney((verifiedByBill.get(payment.bill_id) ?? 0) + Number(payment.amount || 0)),
-      );
+      for (const allocation of paymentBillAmounts(payment, payment.allocations ?? [])) {
+        verifiedByBill.set(allocation.bill_id, roundMoney((verifiedByBill.get(allocation.bill_id) ?? 0) + Number(allocation.amount || 0)));
+      }
     }
 
     const calculatedBills = (portalResult.data.bills as Bill[]).map((bill) => {

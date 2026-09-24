@@ -25,8 +25,10 @@ function numberVal(value: unknown, fallback = 0) {
 
 export async function GET(request: NextRequest) {
   try {
+    const { staff, response } = await requireStaff(request, [...BILLING_STAFF_ROLES, "staff"]);
+    if (!staff) return response;
     const { searchParams } = new URL(request.url);
-    const month = searchParams.get("month")?.slice(0, 7);
+    const month = searchParams.get("month");
     const residentId = searchParams.get("resident_id");
 
     let query = supabaseAdmin
@@ -36,8 +38,9 @@ export async function GET(request: NextRequest) {
       )
       .order("created_at", { ascending: false });
 
+    if (month && !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return apiError("A valid YYYY-MM month is required.", 400);
     if (month) {
-      query = query.like("billing_month", `${month}%`);
+      query = query.eq("billing_month", month);
     }
     if (residentId) {
       query = query.eq("resident_id", residentId);
@@ -129,14 +132,14 @@ export async function POST(request: NextRequest) {
 
     const residentId = text(body.resident_id);
     const admissionId = text(body.admission_id) || null;
-    const billingMonth = text(body.billing_month).slice(0, 7);
+    const billingMonth = text(body.billing_month);
     const previousReading = numberVal(body.previous_reading);
     const currentReading = numberVal(body.current_reading);
 
-    if (!residentId) {
-      return apiError("Student/Resident is required.", 400);
+    if (!residentId || !admissionId) {
+      return apiError("Resident and admission are required.", 400);
     }
-    if (!billingMonth || !/^\d{4}-\d{2}$/.test(billingMonth)) {
+    if (!billingMonth || !/^\d{4}-(0[1-9]|1[0-2])$/.test(billingMonth)) {
       return apiError("A valid billing month (YYYY-MM) is required.", 400);
     }
     if (previousReading < 0 || currentReading < 0) {
@@ -146,6 +149,8 @@ export async function POST(request: NextRequest) {
       return apiError("Current reading must be greater than or equal to previous reading.", 400);
     }
 
+    const { data: admission, error: admissionError } = await supabaseAdmin.from("admissions").select("id").eq("id", admissionId).eq("resident_id", residentId).in("status", ["Pending", "Active"]).maybeSingle();
+    if (admissionError || !admission) return apiError("A current admission belonging to this resident is required.", 400);
     const config = await getMeterReadingConfig(supabaseAdmin);
     if (!isResidentElectricityEnabled(config, residentId)) {
       return apiError("This student is not selected/enabled for electricity billing. Please enable electricity billing for this student first.", 400);
@@ -162,8 +167,8 @@ export async function POST(request: NextRequest) {
     const existingCheck = await supabaseAdmin
       .from("ac_bills")
       .select("id, bill_id")
-      .eq("resident_id", residentId)
-      .like("billing_month", `${billingMonth}%`)
+      .eq("admission_id", admissionId)
+      .eq("billing_month", billingMonth)
       .maybeSingle();
 
     if (existingCheck.data) {

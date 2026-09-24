@@ -11,6 +11,7 @@ import {
   Suspense,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { billingMonth as canonicalBillingMonth } from "@/lib/canonical";
 import { supabase } from "@/lib/supabase";
 import {
   deriveBillStatus,
@@ -19,6 +20,7 @@ import {
   refreshBillFinancials,
 } from "@/lib/financials";
 import { getSupabaseErrorMessage } from "@/lib/supabaseErrors";
+import { paymentBillAmounts } from "@/lib/paymentAllocations";
 import {
   notificationWarning,
   requestEventNotification,
@@ -196,10 +198,7 @@ function firstText(row: GenericRow | undefined, keys: string[]) {
 }
 
 function residentName(row: GenericRow | undefined) {
-  return (
-    firstText(row, ["full_name", "resident_name", "name"]) ||
-    "Unknown resident"
-  );
+  return String(row?.full_name || "Resident");
 }
 
 function money(value: unknown) {
@@ -332,7 +331,7 @@ function BillingContent() {
           .order("billing_month", { ascending: false }),
         supabase
           .from("payments")
-          .select("id, bill_id, resident_id, payment_number, payment_date, amount, payment_status, reference_number")
+          .select("id, bill_id, resident_id, payment_number, payment_date, amount, payment_status, reference_number, payment_allocations(payment_id,bill_id,amount)")
           .order("payment_date", { ascending: false }),
         supabase
           .from("payment_receipts")
@@ -355,11 +354,11 @@ function BillingContent() {
       const verifiedByBill = new Map<string, number>();
       for (const payment of paymentsResult.data ?? []) {
         if (payment.payment_status !== "Verified") continue;
-        const billId = text(payment.bill_id);
-        verifiedByBill.set(
-          billId,
-          roundMoney((verifiedByBill.get(billId) ?? 0) + numberValue(payment.amount)),
-        );
+        for (const allocation of paymentBillAmounts(payment, payment.payment_allocations ?? [])) {
+          const billId = text(allocation.bill_id);
+          if (!billId) continue;
+          verifiedByBill.set(billId, roundMoney((verifiedByBill.get(billId) ?? 0) + numberValue(allocation.amount)));
+        }
       }
       setBills(
         ((billsResult.data ?? []) as Bill[]).map((bill) => {
@@ -792,11 +791,19 @@ function BillingContent() {
 
     try {
       const amount = Number(paymentForm.amount);
-      if (Number.isNaN(amount) || amount <= 0) {
+      if (!Number.isFinite(amount) || amount <= 0) {
         throw new Error("Payment amount must be greater than zero.");
       }
-      if (amount > Number(recordingPaymentBill.balance_amount)) {
-        throw new Error(`Payment exceeds the current outstanding balance of ${money(recordingPaymentBill.balance_amount)}.`);
+      const { data: currentBill, error: billError } = await supabase.from("bills")
+        .select("id, resident_id, total_amount, bill_status").eq("id", recordingPaymentBill.id).single();
+      if (billError || !currentBill || currentBill.resident_id !== recordingPaymentBill.resident_id ||
+          ["Cancelled", "Draft", "Pending Approval"].includes(currentBill.bill_status)) {
+        throw new Error("The selected bill is no longer payable. Refresh before recording payment.");
+      }
+      const paidNow = await getVerifiedPaymentTotal(recordingPaymentBill.id);
+      const outstandingNow = Math.max(0, Number(currentBill.total_amount) - paidNow);
+      if (amount > outstandingNow) {
+        throw new Error(`Payment exceeds the current outstanding balance of ${money(outstandingNow)}.`);
       }
 
       // Check for duplicate reference
@@ -828,28 +835,13 @@ function BillingContent() {
         payment_status: "Verified",
         verified: true,
         verified_by: "Admin",
+        verified_at: new Date().toISOString(),
       });
 
       if (insertError) throw insertError;
 
       await refreshBillFinancials(recordingPaymentBill.id);
 
-      const isDepositBill =
-        recordingPaymentBill.bill_type === "Security Deposit" ||
-        recordingPaymentBill.billing_month === "Security Deposit" ||
-        recordingPaymentBill.bill_number.startsWith("DEP-");
-      if (isDepositBill && amount >= Number(recordingPaymentBill.balance_amount)) {
-        let admissionUpdate = supabase
-          .from("admissions")
-          .update({ deposit_status: "Held", updated_at: new Date().toISOString() })
-          .eq("resident_id", recordingPaymentBill.resident_id)
-          .eq("deposit_status", "Pending");
-        if (recordingPaymentBill.admission_id) {
-          admissionUpdate = admissionUpdate.eq("id", recordingPaymentBill.admission_id);
-        }
-        await admissionUpdate;
-      }
-      
       setMessage("Payment successfully recorded.");
       setRecordingPaymentBill(null);
       void refresh();
@@ -939,7 +931,7 @@ function BillingContent() {
       return;
     }
 
-    const expectedMonth = monthStartDate(bill.billing_month);
+    const expectedMonth = canonicalBillingMonth(bill.billing_month);
     const exactLinkedRows = (linkedMeterRows ?? []) as AcBill[];
     let meterBill: AcBill | null = exactLinkedRows[0] ?? null;
 
@@ -1119,12 +1111,12 @@ function BillingContent() {
     const meterSupplied = Boolean(
       form.previous_reading || form.current_reading || form.rate_per_unit,
     );
-    const acBillingMonth = monthStartDate(form.billing_month);
+    const acBillingMonth = canonicalBillingMonth(form.billing_month);
     const preExistingReading = acBills.find(
       (item) =>
         ((form.admission_id && item.admission_id === form.admission_id) ||
           (form.resident_id && item.resident_id === form.resident_id)) &&
-        monthStartDate(item.billing_month) === acBillingMonth,
+        item.billing_month === acBillingMonth,
     );
     const currentMeterBillId = editingId
       ? editingAcBillId ?? acBills.find((item) => item.bill_id === editingId)?.id
@@ -1162,9 +1154,10 @@ function BillingContent() {
         .from("bills")
         .select("id")
         .eq("admission_id", form.admission_id)
-        .eq("billing_month", form.billing_month)
+        .eq("billing_month", form.bill_type === "Security Deposit" ? "Security Deposit" : form.billing_month)
         .neq("bill_status", "Cancelled")
         .limit(1);
+      duplicateQuery = form.bill_type === "Security Deposit" ? duplicateQuery.eq("bill_type", "Security Deposit") : duplicateQuery.neq("bill_type", "Security Deposit");
       if (editingId) duplicateQuery = duplicateQuery.neq("id", editingId);
       const { data: duplicate, error: duplicateError } = await duplicateQuery;
       if (duplicateError) {
@@ -1203,6 +1196,15 @@ function BillingContent() {
       }
     }
 
+    if (editingId) {
+      const { data: existingBill, error: existingError } = await supabase.from("bills")
+        .select("resident_id, admission_id, bill_type").eq("id", editingId).single();
+      if (existingError || !existingBill || existingBill.resident_id !== form.resident_id ||
+          existingBill.admission_id !== (form.admission_id || null) || existingBill.bill_type !== form.bill_type) {
+        setError("An existing bill cannot be moved to another resident, admission or obligation. Cancel it and issue the correct bill.");
+        setSaving(false); return;
+      }
+    }
     const verifiedPaid = editingId
       ? await getVerifiedPaymentTotal(editingId).catch(() => null)
       : 0;
@@ -1224,7 +1226,10 @@ function BillingContent() {
       form.bill_status,
     );
 
-    if (form.bill_status === "Cancelled") finalStatus = "Cancelled";
+    if (form.bill_status === "Cancelled") {
+      if (verifiedPaid > 0) { setError("Cancel or reconcile verified payments before cancelling their bill."); setSaving(false); return; }
+      finalStatus = "Cancelled";
+    }
 
     const payload = {
       resident_id: form.resident_id,
@@ -1263,6 +1268,10 @@ function BillingContent() {
       setError(getSupabaseErrorMessage(result.error, "The bill could not be saved. Please verify the details and try again.", "A bill with these details already exists."));
     } else {
       const savedBillId = text(result.data?.id);
+      if (form.bill_type === "Security Deposit") {
+        try { await refreshBillFinancials(savedBillId); }
+        catch { setError("Bill saved, but deposit status needs reconciliation. Refresh before proceeding."); setSaving(false); await refresh(); return; }
+      }
       const existingMeterBillId =
         currentMeterBillId ??
         preExistingReading?.id ??
@@ -1382,7 +1391,7 @@ function BillingContent() {
             numberValue(meterPayload.rate_per_unit) &&
           numberValue(verifiedMeterBill.total_amount) ===
             numberValue(meterPayload.total_amount) &&
-          monthStartDate(verifiedMeterBill.billing_month) === acBillingMonth;
+          verifiedMeterBill.billing_month === acBillingMonth;
 
         if (!persistedMeterValuesMatch) {
           console.error("[Billing] ac_bills read-back did not match the insert payload", {
@@ -1425,6 +1434,10 @@ function BillingContent() {
     setMessage("");
     setError("");
 
+    const verifiedPaid = await getVerifiedPaymentTotal(bill.id).catch(() => null);
+    if (verifiedPaid === null || verifiedPaid > 0) {
+      setError("Cancel or reconcile verified payments before cancelling their bill."); return;
+    }
     const { error: cancelError } = await supabase
       .from("bills")
       .update({ bill_status: "Cancelled", updated_at: new Date().toISOString() })
@@ -1433,12 +1446,18 @@ function BillingContent() {
     if (cancelError) {
       setError(getSupabaseErrorMessage(cancelError, "The bill could not be cancelled."));
     } else {
+      try { await refreshBillFinancials(bill.id); }
+      catch { setError("Bill cancelled, but deposit status needs reconciliation. Refresh before proceeding."); await refresh(); return; }
       setMessage("Bill cancelled. Its payment and billing history has been preserved.");
       await refresh();
     }
   }
 
   async function deleteBill(bill: Bill) {
+    const { data: currentBill, error: currentError } = await supabase.from("bills").select("bill_type").eq("id", bill.id).single();
+    if (currentError || !currentBill || currentBill.bill_type === "Security Deposit") {
+      setError("Security deposit history must be preserved. Use cancellation after reconciling payments."); return;
+    }
     if (!window.confirm(`Permanently delete bill ${bill.bill_number}? This cannot be undone.`)) {
       return;
     }
@@ -1446,8 +1465,6 @@ function BillingContent() {
     setMessage("");
     setError("");
 
-    // If it's an auto-generated deposit, we might want to also revert the admission's deposit_status if it's still 'Pending' or 'Held'.
-    // But a simple delete on the bill is what the user asked for.
     const { error: deleteError } = await supabase
       .from("bills")
       .delete()

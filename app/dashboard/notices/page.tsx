@@ -1,17 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { NOTICE_STATUSES, bigintId } from "@/lib/canonical";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
 type Notice = {
-  id: number;
+  id: string;
   title: string;
   description: string;
   priority: string;
   audience: string;
-  publish_date: string;
-  expiry_date: string;
+  publish_date: string | null;
+  expiry_date: string | null;
   pinned: boolean;
   status: string;
   created_at: string;
@@ -38,7 +39,7 @@ export default function NoticesPage() {
 
     const { data, error } = await supabase
       .from("notices")
-      .select("*")
+      .select("id::text,title,description,priority,audience,publish_date,expiry_date,pinned,status,created_at")
       .order("pinned", {
         ascending: false,
       })
@@ -93,7 +94,7 @@ export default function NoticesPage() {
   ]);
 
   const deleteNotice = async (
-    id: number
+    id: string
   ) => {
     if (
       !confirm(
@@ -107,7 +108,7 @@ export default function NoticesPage() {
       await supabase
         .from("notices")
         .delete()
-        .eq("id", id);
+        .eq("id", bigintId(id));
 
     if (error) {
       alert(error.message);
@@ -192,10 +193,7 @@ export default function NoticesPage() {
                 className="w-full rounded-lg border border-gray-300 px-3 py-2.5"
               >
                 <option value="All">All Statuses</option>
-                <option value="Published">Published</option>
-                <option value="Active">Active</option>
-                <option value="Draft">Draft</option>
-                <option value="Inactive">Inactive</option>
+                {NOTICE_STATUSES.map(status => <option key={status} value={status}>{status}</option>)}
               </select>
             </div>
 
@@ -273,7 +271,7 @@ export default function NoticesPage() {
                   : "bg-blue-100 text-blue-700";
 
               const statusClass =
-                notice.status === "Active" || notice.status === "Published"
+                notice.status === "Published"
                   ? "bg-green-100 text-green-700"
                   : notice.status === "Draft"
                   ? "bg-yellow-100 text-yellow-700"
@@ -333,7 +331,7 @@ export default function NoticesPage() {
                       <span className="font-medium text-gray-700">
                         Audience:
                       </span>{" "}
-                      {notice.audience || "All Residents"}
+                      {notice.audience || "Unknown audience"}
                     </div>
 
                     <div>

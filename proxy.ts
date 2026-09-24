@@ -1,3 +1,4 @@
+import { normalizeIdentityEmail } from "@/lib/identity";
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
@@ -106,7 +107,7 @@ async function getUserRole(supabase: SupabaseClient, email: string | undefined) 
   const { data: staffUser } = await supabase
     .from("staff_users")
     .select("email, role")
-    .ilike("email", normalizedEmail)
+    .eq("email", normalizeIdentityEmail(normalizedEmail))
     .maybeSingle();
 
   if (staffUser?.email) {
@@ -116,7 +117,7 @@ async function getUserRole(supabase: SupabaseClient, email: string | undefined) 
   const { data: residentUser } = await supabase
     .from("residents")
     .select("email, status")
-    .ilike("email", normalizedEmail)
+    .eq("email", normalizeIdentityEmail(normalizedEmail))
     .maybeSingle();
 
   return residentUser?.email && String(residentUser.status ?? "").trim().toLowerCase() !== "archived"

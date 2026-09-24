@@ -104,7 +104,7 @@ export default function ResidentInspectionReportPage() {
           ? supabase.from("residents").select("id,full_name,resident_code,phone").eq("id", current.resident_id).maybeSingle()
           : Promise.resolve({ data: null }),
         current.room_id
-          ? supabase.from("rooms").select("id,room_number,building_name,block_name,floor_number").eq("id", current.room_id).maybeSingle()
+          ? supabase.from("rooms").select("id,room_number,block_name,floor_number").eq("id", current.room_id).maybeSingle()
           : Promise.resolve({ data: null }),
         current.bed_id
           ? supabase.from("beds").select("id,bed_number").eq("id", current.bed_id).maybeSingle()

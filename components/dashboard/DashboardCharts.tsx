@@ -23,7 +23,7 @@ export default function DashboardCharts({ data }: { data: DashboardData }) {
   const occupancyData = useMemo(() => {
     const totalBeds = beds.length;
     const occupiedBeds = beds.filter((bed: any) => bed.status === "Occupied").length;
-    const availableBeds = beds.filter((bed: any) => bed.status === "Available" || bed.status === "Vacant").length;
+    const availableBeds = beds.filter((bed: any) => bed.bed.status === "Vacant").length;
     const inactiveBeds = beds.filter((bed: any) => bed.status === "Inactive").length;
 
     return [
@@ -75,15 +75,15 @@ export default function DashboardCharts({ data }: { data: DashboardData }) {
             <BarChart data={revenueData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
               <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: "#64748b", fontSize: 12 }} dy={10} />
-              <YAxis 
-                axisLine={false} 
-                tickLine={false} 
-                tickFormatter={(val) => `Rs ${val >= 1000 ? val / 1000 + 'k' : val}`} 
-                tick={{ fill: "#64748b", fontSize: 12 }} 
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(val: number) => `Rs ${val >= 1000 ? val / 1000 + 'k' : val}`}
+                tick={{ fill: "#64748b", fontSize: 12 }}
                 width={70}
               />
-              <Tooltip 
-                cursor={{ fill: "#f8fafc" }} 
+              <Tooltip
+                cursor={{ fill: "#f8fafc" }}
                 contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }}
                 formatter={(value: any) => [formatCurrency(Number(value) || 0), "Revenue"]}
               />
@@ -112,7 +112,7 @@ export default function DashboardCharts({ data }: { data: DashboardData }) {
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip 
+              <Tooltip
                 contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }}
               />
               <Legend verticalAlign="bottom" height={36} iconType="circle" />

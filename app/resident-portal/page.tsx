@@ -57,27 +57,15 @@ function firstText(row: GenericRow | null, keys: string[]) {
 }
 
 function residentName(row: GenericRow | null) {
-  const direct = firstText(row, ["full_name", "resident_name", "name"]);
-  if (direct) return direct;
-
-  const combined = `${firstText(row, ["first_name"])} ${firstText(row, [
-    "last_name",
-    "surname",
-  ])}`.trim();
-
-  return (
-    combined ||
-    firstText(row, ["phone", "email", "cnic"]) ||
-    "Resident"
-  );
+  return String(row?.full_name || "Resident");
 }
 
 function roomName(row: GenericRow | null) {
-  return firstText(row, ["room_number", "number", "name"]) || "—";
+  return firstText(row, ["room_number"]) || "—";
 }
 
 function bedName(row: GenericRow | null) {
-  const value = firstText(row, ["bed_number", "bed_code", "number", "name"]);
+  const value = firstText(row, ["bed_number"]);
   return value ? normalizeBedLabel(value) : "—";
 }
 
@@ -133,13 +121,13 @@ export default function ResidentPortalPage() {
     ] = await Promise.all([
       supabase
         .from("notices")
-        .select("*")
+        .select("id::text,title,description,notice_type,audience,resident_id,room_id,status,publish_date,expiry_date,priority,pinned,show_as_popup,created_at")
         .eq("status", "Published")
         .order("pinned", { ascending: false })
         .order("publish_date", { ascending: false }),
       supabase
         .from("notice_recipients")
-        .select("notice_id")
+        .select("notice_id::text")
         .eq("resident_id", residentId),
       supabase
         .from("room_inspections")
@@ -235,7 +223,7 @@ export default function ResidentPortalPage() {
   }
 
   const isReadOnlyView = false;
-  const admissionStatus = firstText(admission, ["status", "admission_status"]);
+  const admissionStatus = firstText(admission, ["status"]);
   const hasActiveAdmission = admissionStatus === "Active";
   const contractSigned = isContractSignedAndAccepted(contract ?? undefined);
   const depositVerified = isDepositVerified(firstText(admission, ["deposit_status"]));
@@ -247,7 +235,7 @@ export default function ResidentPortalPage() {
     const totals = new Map<string, number>();
     for (const payment of payments) {
       if (
-        firstText(payment, ["payment_status", "status"])
+        firstText(payment, ["payment_status"])
           .trim()
           .toLowerCase() !== "verified"
       ) {
@@ -417,7 +405,7 @@ export default function ResidentPortalPage() {
                     ],
                     [
                       "Expected Leaving",
-                      firstText(admission, ["expected_leaving_date", "leaving_date"]).slice(0, 10) || "—",
+                      firstText(admission, ["expected_leaving_date"]).slice(0, 10) || "—",
                     ],
                     ["Room", roomName(room)],
                     ["Bed", bedName(bed)],
@@ -426,13 +414,13 @@ export default function ResidentPortalPage() {
                       money(
                         admission?.monthly_rent ??
                           room?.monthly_rent ??
-                          bed?.monthly_rent ??
+
                           0
                       ),
                     ],
                     [
                       "Security Deposit",
-                      money(admission?.security_deposit ?? admission?.deposit_amount ?? 0),
+                      money(admission?.security_deposit ?? 0),
                     ],
                   ]}
                 />
@@ -472,11 +460,11 @@ export default function ResidentPortalPage() {
               <InfoGrid
                 items={[
                   ["Name", residentName(resident)],
-                  ["Phone", firstText(resident, ["phone", "mobile"]) || "—"],
+                  ["Phone", firstText(resident, ["phone"]) || "—"],
                   ["Email", firstText(resident, ["email"]) || "—"],
-                  ["CNIC", firstText(resident, ["cnic", "national_id"]) || "—"],
+                  ["CNIC", firstText(resident, ["cnic"]) || "—"],
                   ["Profile Status", hasActiveAdmission ? "Active Resident" : "Pending Onboarding"],
-                  ["Address", firstText(resident, ["address"]) || "—"],
+                  ["Address", firstText(resident, ["permanent_address"]) || "—"],
                 ]}
               />
             </Card>
@@ -488,20 +476,20 @@ export default function ResidentPortalPage() {
                 items={[
                   ["Room", roomName(room)],
                   ["Bed", bedName(bed)],
-                  ["Room Type", firstText(room, ["room_type", "type"]) || "—"],
-                  ["Bed Type", firstText(bed, ["bed_type", "type"]) || "—"],
+                  ["Room Type", firstText(room, ["room_type"]) || "—"],
+                  ["Bed Type", firstText(bed, ["bed_number"]) || "—"],
                   [
                     "Monthly Rent",
                     money(
                       admission?.monthly_rent ??
                         room?.monthly_rent ??
-                        bed?.monthly_rent ??
+
                         0
                     ),
                   ],
                   [
                     "Admission Status",
-                    firstText(admission, ["status", "admission_status"]) || "Active",
+                    firstText(admission, ["status"]) || "Active",
                   ],
                 ]}
               />
@@ -520,14 +508,14 @@ export default function ResidentPortalPage() {
                   ["Status", firstText(contract, ["status"]) || "—"],
                   [
                     "Resident Signature",
-                    firstText(contract, ["resident_signature"]) ? "Signed" : "Pending",
+                    firstText(contract, ["resident_signature_url"]) ? "Signed" : "Pending",
                   ],
                 ]}
               />
 
-              {firstText(contract, ["contract_content", "terms", "terms_and_conditions"]) && (
+              {firstText(contract, ["contract_content"]) && (
                 <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
-                  {firstText(contract, ["contract_content", "terms", "terms_and_conditions"])}
+                  {firstText(contract, ["contract_content"])}
                 </div>
               )}
               <Link
@@ -556,7 +544,7 @@ export default function ResidentPortalPage() {
                     )
                   ),
                   firstText(bill, ["due_date"]).slice(0, 10) || "—",
-                  firstText(bill, ["bill_status", "status"]) || "Pending",
+                  firstText(bill, ["bill_status"]) || "Pending",
                 ])}
               />
 

@@ -69,12 +69,10 @@ type Contract = {
   notice_period_days: number;
   resident_signature_status: SignatureStatus;
   owner_signature_status: SignatureStatus;
-  resident_signature_name: string | null;
   owner_signature_name: string | null;
   signed_at: string | null;
   status: ContractStatus | null;
-  contract_status: string | null;
-  terms: string | null;
+  contract_content: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -90,12 +88,6 @@ type ContractForm = {
   monthly_rent: string;
   security_deposit: string;
   notice_period_days: string;
-  resident_signature_status: SignatureStatus;
-  owner_signature_status: SignatureStatus;
-  resident_signature_name: string;
-  owner_signature_name: string;
-  status: ContractStatus;
-  terms: string;
 };
 
 type ContractTemplateRecord = {
@@ -140,12 +132,6 @@ const emptyForm: ContractForm = {
   monthly_rent: "",
   security_deposit: "",
   notice_period_days: "30",
-  resident_signature_status: "Pending",
-  owner_signature_status: "Pending",
-  resident_signature_name: "",
-  owner_signature_name: "",
-  status: "Draft",
-  terms: defaultTerms,
 };
 
 const inputClass =
@@ -211,7 +197,7 @@ export default function ContractsPage() {
       { data: bedsData, error: bedsError },
       { data: templatesData, error: templatesError },
     ] = await Promise.all([
-      supabase.from("contracts").select("*").order("created_at", { ascending: false }),
+      supabase.from("contracts").select("id, contract_number, resident_id, admission_id, room_id, bed_id, start_date, end_date, monthly_rent, security_deposit, notice_period_days, resident_signature_status, owner_signature_status, owner_signature_name, signed_at, status, contract_content, created_at, updated_at").order("created_at", { ascending: false }),
       supabase.from("residents").select("id, full_name, status").order("full_name"),
       supabase.from("admissions").select("*").order("created_at", { ascending: false }),
       supabase.from("rooms").select("id, room_number").order("room_number"),
@@ -401,12 +387,6 @@ export default function ContractsPage() {
       monthly_rent: String(contract.monthly_rent ?? 0),
       security_deposit: String(contract.security_deposit ?? 0),
       notice_period_days: String(contract.notice_period_days ?? 30),
-      resident_signature_status: contract.resident_signature_status,
-      owner_signature_status: contract.owner_signature_status,
-      resident_signature_name: contract.resident_signature_name ?? "",
-      owner_signature_name: contract.owner_signature_name ?? "",
-      status: getContractStatus(contract),
-      terms: contract.terms ?? defaultTerms,
     });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -464,16 +444,7 @@ export default function ContractsPage() {
             .eq("id", form.admission_id)
             .maybeSingle()
         : Promise.resolve({ data: null, error: null }),
-      form.status === "Active"
-        ? supabase
-            .from("contracts")
-            .select("id")
-            .eq("resident_id", form.resident_id)
-            .or("status.eq.Active,contract_status.eq.Active")
-            .neq("id", editingId ?? "00000000-0000-0000-0000-000000000000")
-            .limit(1)
-            .maybeSingle()
-        : Promise.resolve({ data: null, error: null }),
+      Promise.resolve({ data: null, error: null }),
     ]);
 
     const validationError =
@@ -509,12 +480,6 @@ export default function ContractsPage() {
       return;
     }
 
-    if (duplicateResult.data) {
-      setError("This resident already has an active contract.");
-      setSaving(false);
-      return;
-    }
-
     const existingContract = editingId
       ? contracts.find((contract) => contract.id === editingId)
       : null;
@@ -525,33 +490,13 @@ export default function ContractsPage() {
       return;
     }
 
-    const payload = {
-      contract_number: existingContract.contract_number,
-      resident_id: existingContract.resident_id,
-      admission_id: existingContract.admission_id,
-      room_id: existingContract.room_id,
-      bed_id: existingContract.bed_id,
-      start_date: existingContract.start_date,
-      end_date: form.end_date || null,
-      monthly_rent: existingContract.monthly_rent,
-      security_deposit: existingContract.security_deposit,
-      notice_period_days: existingContract.notice_period_days,
-      resident_signature_status: existingContract.resident_signature_status,
-      owner_signature_status: existingContract.owner_signature_status,
-      resident_signature_name: existingContract.resident_signature_name,
-      owner_signature_name: existingContract.owner_signature_name,
-      signed_at: existingContract.signed_at,
-      status: getContractStatus(existingContract),
-      contract_status: getContractStatus(existingContract),
-      terms: existingContract.terms,
-      updated_at: new Date().toISOString(),
-    };
+    // End-date edits must never overwrite a signature, approval or lifecycle transition.
+    const result = await supabase.from("contracts")
+      .update({ end_date: form.end_date || null, updated_at: new Date().toISOString() })
+      .eq("id", existingContract.id).eq("updated_at", existingContract.updated_at)
+      .select("id").maybeSingle();
 
-    const result = editingId
-      ? await supabase.from("contracts").update(payload).eq("id", editingId)
-      : await supabase.from("contracts").insert(payload);
-
-    if (result.error) {
+    if (result.error || !result.data) {
       setError(
         getSupabaseErrorMessage(
           result.error,
@@ -581,16 +526,15 @@ export default function ContractsPage() {
     setMessage("");
     setError("");
 
-    const { error: cancelError } = await supabase
+    const { data: cancelled, error: cancelError } = await supabase
       .from("contracts")
       .update({
         status: "Cancelled",
-        contract_status: "Cancelled",
         updated_at: new Date().toISOString(),
       })
-      .eq("id", contract.id);
+      .eq("id", contract.id).eq("status", contract.status).eq("updated_at", contract.updated_at).select("id").maybeSingle();
 
-    if (cancelError) {
+    if (cancelError || !cancelled) {
       setError(
         getSupabaseErrorMessage(
           cancelError,
@@ -643,7 +587,7 @@ export default function ContractsPage() {
             <div class="card"><div class="label">Security Deposit</div><div class="value">${money(contract.security_deposit)}</div></div>
           </div>
           <h2>Terms and Conditions</h2>
-          <div class="terms">${contract.terms ?? ""}</div>
+          <div class="terms">${contract.contract_content ?? ""}</div>
         </body>
       </html>
     `);
@@ -914,96 +858,8 @@ export default function ContractsPage() {
                   />
                 </Field>
 
-                <Field label="Resident Signature">
-                  <select
-                    value={form.resident_signature_status}
-                    onChange={(event) =>
-                      updateField(
-                        "resident_signature_status",
-                        event.target.value as SignatureStatus
-                      )
-                    }
-                    className={inputClass}
-                  >
-                    <option value="Pending">Pending</option>
-                    <option value="Signed">Signed</option>
-                    <option value="Approved">Approved</option>
-                    <option value="Rejected">Rejected</option>
-                    <option value="Re-sign Required">Re-sign Required</option>
-                  </select>
-                </Field>
-
-                <Field label="Resident Signature Name">
-                  <input
-                    disabled
-                    value={form.resident_signature_name}
-                    className={`${inputClass} bg-slate-50`}
-                    placeholder="Resident full name"
-                  />
-                </Field>
-
-                <Field label="Owner Signature">
-                  <select
-                    value={form.owner_signature_status}
-                    onChange={(event) =>
-                      updateField(
-                        "owner_signature_status",
-                        event.target.value as SignatureStatus
-                      )
-                    }
-                    className={inputClass}
-                  >
-                    <option value="Pending">Pending</option>
-                    <option value="Signed">Signed</option>
-                  </select>
-                </Field>
-
-                <Field label="Owner Signature Name">
-                  <input
-                    disabled
-                    value={form.owner_signature_name}
-                    onChange={(event) =>
-                      updateField(
-                        "owner_signature_name",
-                        event.target.value
-                      )
-                    }
-                    className={inputClass}
-                    placeholder="Owner or manager name"
-                  />
-                </Field>
-
-                <Field label="Contract Status">
-                  <select
-                    value={form.status}
-                    onChange={(event) =>
-                      updateField(
-                        "status",
-                        event.target.value as ContractStatus
-                      )
-                    }
-                    className={inputClass}
-                  >
-                    <option value="Draft">Draft</option>
-                    <option value="Pending Signature">
-                      Pending Signature
-                    </option>
-                    <option value="Active">Active</option>
-                    <option value="Expired">Expired</option>
-                    <option value="Cancelled">Cancelled</option>
-                    <option value="Terminated">Terminated (Legacy)</option>
-                  </select>
-                </Field>
-
                 <Field label="Terms and Conditions" wide>
-                  <textarea
-                    disabled
-                    value={form.terms}
-                    onChange={(event) =>
-                      updateField("terms", event.target.value)
-                    }
-                    className={`${inputClass} min-h-52`}
-                  />
+                  <textarea disabled value={defaultTerms} className={`${inputClass} min-h-52`} />
                 </Field>
               </div>
 
@@ -1394,5 +1250,5 @@ function StatCard({
 }
 
 function getContractStatus(contract: Contract) {
-  return (contract.status ?? contract.contract_status ?? "Draft") as ContractStatus;
+  return (contract.status ?? "Draft") as ContractStatus;
 }

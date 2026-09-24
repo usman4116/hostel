@@ -1,8 +1,9 @@
+import { buildResidentFinancialSummary } from "@/lib/residentFinancialSummary";
 import { useMemo } from "react";
 import type { DashboardData } from "@/lib/dashboardData";
 
 export default function DashboardStats({ data }: { data: DashboardData }) {
-  const { residents, bills, payments, beds, rooms } = data;
+  const { residents, bills, payments, beds, admissions } = data;
 
   const stats = useMemo(() => {
     // 1. Total Residents (Active)
@@ -18,23 +19,9 @@ export default function DashboardStats({ data }: { data: DashboardData }) {
       .filter(p => String(p.payment_status || "").toLowerCase() === "verified")
       .reduce((sum, p) => sum + Number(p.amount || 0), 0);
 
-    // 4. Outstanding Dues
-    const verifiedByBill = new Map<string, number>();
-    payments.forEach((payment) => {
-      if (String(payment.payment_status || "").toLowerCase() === "verified") {
-        const id = String(payment.bill_id);
-        verifiedByBill.set(id, (verifiedByBill.get(id) || 0) + Number(payment.amount || 0));
-      }
-    });
-
-    let totalOutstanding = 0;
-    bills.forEach((bill) => {
-      if (String(bill.bill_status || "").toLowerCase() !== "cancelled") {
-        const paid = verifiedByBill.get(String(bill.id)) || 0;
-        const total = Number(bill.total_amount || 0);
-        totalOutstanding += Math.max(0, total - paid);
-      }
-    });
+    // Current account obligations share the portal calculation, including unbilled initial rent.
+    const totalOutstanding = admissions.filter(admission => ["Pending", "Active"].includes(String(admission.status)))
+      .reduce((sum, admission) => sum + buildResidentFinancialSummary({ admission, room: null, bed: null, bills, payments }).totalOutstanding, 0);
 
     return {
       totalResidents,
@@ -44,14 +31,14 @@ export default function DashboardStats({ data }: { data: DashboardData }) {
       totalRevenue,
       totalOutstanding,
     };
-  }, [residents, bills, payments, beds]);
+  }, [residents, bills, payments, beds, admissions]);
 
   const money = (val: number) => `Rs ${val.toLocaleString()}`;
 
   const cards = [
     { label: "Active Residents", value: stats.totalResidents, color: "text-blue-600 dark:text-blue-400" },
     { label: "Total Revenue", value: money(stats.totalRevenue), color: "text-emerald-600 dark:text-emerald-400" },
-    { label: "Outstanding Dues", value: money(stats.totalOutstanding), color: "text-red-600 dark:text-red-400" },
+    { label: "Current Admission Dues", value: money(stats.totalOutstanding), color: "text-red-600 dark:text-red-400" },
     { label: "Bed Occupancy", value: `${stats.bedOccupancyRate}%`, sub: `${stats.occupiedBeds} / ${stats.totalBeds} beds`, color: "text-indigo-600 dark:text-indigo-400" },
   ];
 

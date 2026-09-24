@@ -1,91 +1,43 @@
 import { supabase } from "@/lib/supabase";
-import { isUnapprovedBill } from "@/lib/billApproval";
-
-export type BillLifecycleStatus =
-  | "Draft"
-  | "Pending Approval"
-  | "Pending"
-  | "Partially Paid"
-  | "Paid"
-  | "Overdue"
-  | "Cancelled";
-
-export function roundMoney(value: number) {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
-}
-
-export function deriveBillStatus(
-  total: number,
-  paid: number,
-  dueDate: string | null | undefined,
-  currentStatus?: string | null,
-): BillLifecycleStatus {
-  if (currentStatus === "Cancelled") return "Cancelled";
-
-  // A bill awaiting admin approval keeps that status until it is released,
-  // so it never ages into Pending or Overdue while still unpublished.
-  if (isUnapprovedBill(currentStatus)) {
-    return currentStatus as BillLifecycleStatus;
-  }
-
-  const balance = Math.max(roundMoney(total - paid), 0);
-  if (total > 0 && balance === 0) return "Paid";
-  if (paid > 0) return "Partially Paid";
-
-  if (dueDate) {
-    const endOfDueDate = new Date(`${dueDate}T23:59:59`);
-    if (!Number.isNaN(endOfDueDate.getTime()) && endOfDueDate < new Date()) {
-      return "Overdue";
-    }
-  }
-
-  return "Pending";
-}
+import { roundMoney, type BillLifecycleStatus } from "./financialMath";
+export { deriveBillStatus, roundMoney, type BillLifecycleStatus } from "./financialMath";
 
 export async function getVerifiedPaymentTotal(
   billId: string,
   excludePaymentId?: string,
 ) {
-  let query = supabase
+  let paymentQuery = supabase
     .from("payments")
-    .select("id, amount")
-    .eq("bill_id", billId)
+    .select("id, bill_id, amount")
     .eq("payment_status", "Verified");
 
-  if (excludePaymentId) query = query.neq("id", excludePaymentId);
+  if (excludePaymentId) paymentQuery = paymentQuery.neq("id", excludePaymentId);
 
-  const { data, error } = await query;
-  if (error) throw error;
+  let allocationQuery = supabase.from("payment_allocations").select("payment_id, amount").eq("bill_id", billId);
+  if (excludePaymentId) allocationQuery = allocationQuery.neq("payment_id", excludePaymentId);
 
-  return roundMoney(
-    (data ?? []).reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0),
-  );
+  const [{ data: payments, error: paymentError }, { data: allocations, error: allocationError }] = await Promise.all([
+    paymentQuery,
+    allocationQuery,
+  ]);
+  if (paymentError) throw paymentError;
+  if (allocationError) throw allocationError;
+
+  const effectivePaymentIds = new Set((payments ?? []).map((payment) => String(payment.id)));
+  const effectiveAllocations = (allocations ?? []).filter((allocation) => effectivePaymentIds.has(String(allocation.payment_id)));
+  const allocatedPaymentIds = new Set(effectiveAllocations.map((allocation) => String(allocation.payment_id)));
+  const allocatedTotal = effectiveAllocations.reduce((sum, allocation) => sum + Number(allocation.amount ?? 0), 0);
+  const legacyTotal = (payments ?? [])
+    .filter((payment) => payment.bill_id === billId && !allocatedPaymentIds.has(String(payment.id)))
+    .reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0);
+
+  return roundMoney(allocatedTotal + legacyTotal);
 }
 
+/** Reconcile against the ledger inside the database transaction, not a browser snapshot. */
 export async function refreshBillFinancials(billId: string) {
-  const { data: bill, error: billError } = await supabase
-    .from("bills")
-    .select("id, total_amount, due_date, bill_status")
-    .eq("id", billId)
-    .single();
-
-  if (billError) throw billError;
-
-  const paid = await getVerifiedPaymentTotal(billId);
-  const total = roundMoney(Number(bill.total_amount ?? 0));
-  const balance = Math.max(roundMoney(total - paid), 0);
-  const status = deriveBillStatus(total, paid, bill.due_date, bill.bill_status);
-
-  const { error: updateError } = await supabase
-    .from("bills")
-    .update({
-      paid_amount: paid,
-      balance_amount: balance,
-      bill_status: status,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", billId);
-
-  if (updateError) throw updateError;
-  return { paid, balance, status, total };
+  const { data, error } = await supabase.rpc("refresh_bill_financials", { p_bill_id: billId });
+  if (error) throw error;
+  if (!data) throw new Error("The bill could not be reconciled.");
+  return data as { paid: number; balance: number; status: BillLifecycleStatus; total: number };
 }

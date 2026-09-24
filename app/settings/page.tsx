@@ -1,5 +1,8 @@
 "use client";
 
+import { normalizeIdentityEmail } from "@/lib/identity";
+
+
 import Link from "next/link";
 import {
   FormEvent,
@@ -124,7 +127,7 @@ export default function SettingsPage() {
       const { data: staff } = await supabase
         .from("staff_users")
         .select("role, status")
-        .ilike("email", authData.user.email)
+        .eq("email", normalizeIdentityEmail(authData.user.email))
         .maybeSingle();
       setShowAdminTools(isActiveAdmin(staff?.role, staff?.status));
     } else {

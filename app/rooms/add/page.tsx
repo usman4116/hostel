@@ -37,14 +37,11 @@ export default function AddRoomPage() {
       .from("rooms")
       .insert({
         room_number: roomNumber.trim(),
-        floor: floor.trim() || null,
         floor_number: parsedFloorNumber,
-        capacity: parsedCapacity,
         total_beds: parsedCapacity,
         monthly_rent: Number(monthlyRent) || 0,
         room_type: roomType || "Shared",
         status: status || "Available",
-        notes: notes.trim() || null,
         description: notes.trim() || null,
       })
       .select("id")

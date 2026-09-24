@@ -1,7 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import {
   getSupabaseErrorMessage,
-  isMissingColumnError,
 } from "@/lib/supabaseErrors";
 import {
   canonicalBedLabelKey,
@@ -367,7 +366,7 @@ export async function addSingleBed({
 }> {
   const { data: room, error: roomError } = await supabase
     .from("rooms")
-    .select("id, room_number, capacity, total_beds, status")
+    .select("id, room_number, total_beds, status")
     .eq("id", roomId)
     .maybeSingle();
 
@@ -416,26 +415,12 @@ export async function addSingleBed({
     mattress_cover: mattressCover?.trim() || null,
   };
 
-  let { data: newBed, error: insertError } = await supabase
+  const { data: newBed, error: insertError } = await supabase
     .from("beds")
     .insert(insertPayload)
     .select("*")
     .single();
 
-  if (insertError && isMissingColumnError(insertError)) {
-    const fallbackPayload = {
-      room_id: roomId,
-      bed_number: finalBedNumber,
-      status: BED_STATUS.VACANT,
-    };
-    const retry = await supabase
-      .from("beds")
-      .insert(fallbackPayload)
-      .select("*")
-      .single();
-    newBed = retry.data;
-    insertError = retry.error;
-  }
 
   if (insertError || !newBed) {
     return {
@@ -447,14 +432,14 @@ export async function addSingleBed({
   const currentOperationalCount =
     (existingBeds ?? []).filter((b) => isOperationalBedStatus(b.status)).length + 1;
 
-  const currentCap = Number(room.capacity) || Number(room.total_beds) || 1;
+  const currentCap = Number(room.total_beds) || 1;
   let newCapacity = currentCap;
   if (currentOperationalCount > currentCap) {
     newCapacity = currentOperationalCount;
     await supabase
       .from("rooms")
       .update({
-        capacity: newCapacity,
+
         total_beds: newCapacity,
         updated_at: new Date().toISOString(),
       })
@@ -544,19 +529,19 @@ export async function removeSingleBed({
 
     const { data: currentRoom } = await supabase
       .from("rooms")
-      .select("id, capacity, total_beds")
+      .select("id, total_beds")
       .eq("id", effectiveRoomId)
       .maybeSingle();
 
     if (currentRoom) {
       const currentCap =
-        Number(currentRoom.capacity) || Number(currentRoom.total_beds) || 1;
+        Number(currentRoom.total_beds) || 1;
       const newCapacity = Math.max(1, remainingOperationalCount);
       if (newCapacity < currentCap) {
         await supabase
           .from("rooms")
           .update({
-            capacity: newCapacity,
+
             total_beds: newCapacity,
             updated_at: new Date().toISOString(),
           })

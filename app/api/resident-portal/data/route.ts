@@ -1,3 +1,4 @@
+import { normalizeIdentityEmail } from "@/lib/identity";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -54,8 +55,8 @@ export async function GET(request: NextRequest) {
 
     let residentQuery = supabaseAdmin
       .from("residents")
-      .select("id, email, full_name, status, phone, cnic, address")
-      .ilike("email", email);
+      .select("id, email, full_name, status, phone, cnic, permanent_address")
+      .eq("email", normalizeIdentityEmail(email));
     if (metadataResidentId) {
       residentQuery = residentQuery.eq("id", metadataResidentId);
     }
@@ -88,8 +89,8 @@ export async function GET(request: NextRequest) {
     }
 
     const admissions = admissionRows ?? [];
-    const admission =
-      admissions.find((row) => row.status === "Active") ?? admissions[0] ?? null;
+    if (admissions.length > 1) return jsonError("Multiple current admissions require staff review before displaying financial balances.", 409);
+    const admission = admissions[0] ?? null;
 
     const [contractResult, billsResult, paymentsResult, receiptsResult, roomResult, bedResult] =
       await Promise.all([
@@ -97,7 +98,7 @@ export async function GET(request: NextRequest) {
           ? supabaseAdmin
               .from("contracts")
               .select(
-                "id, contract_number, resident_id, admission_id, template_id, contract_content, terms, start_date, end_date, monthly_rent, security_deposit, notice_period_days, status, contract_status, resident_signature, resident_signature_url, resident_signature_status, owner_signature_status, signed_by_resident, signed_at, created_at",
+                "id, contract_number, resident_id, admission_id, template_id, contract_content, start_date, end_date, monthly_rent, security_deposit, notice_period_days, status, resident_signature_url, resident_signature_status, owner_signature_status, signed_by_resident, signed_at, created_at",
               )
               .eq("resident_id", residentId)
               .eq("admission_id", admission.id)
@@ -114,7 +115,7 @@ export async function GET(request: NextRequest) {
         supabaseAdmin
           .from("payments")
           .select(
-            "id, bill_id, resident_id, payment_number, payment_date, amount, payment_method, reference_number, payment_status, verified, verified_by, verified_at, notes, created_at",
+            "id, bill_id, resident_id, payment_number, payment_date, amount, payment_method, reference_number, payment_status, verified, verified_by, verified_at, notes, created_at, payment_allocations(payment_id, bill_id, amount)",
           )
           .eq("resident_id", residentId)
           .order("created_at", { ascending: false }),
@@ -152,7 +153,7 @@ export async function GET(request: NextRequest) {
 
     const contract = (contractResult.data ?? []).find((row) =>
       CURRENT_CONTRACT_STATUSES.has(
-        String(row.status || row.contract_status || "Draft"),
+        String(row.status || "Draft"),
       ),
     ) ?? null;
 
@@ -162,7 +163,7 @@ export async function GET(request: NextRequest) {
     );
     const visibleBillIds = new Set(visibleBills.map((bill) => String(bill.id)));
     const visiblePayments = (paymentsResult.data ?? []).filter(
-      (payment) => !payment.bill_id || visibleBillIds.has(String(payment.bill_id)),
+      (payment) => !payment.bill_id || visibleBillIds.has(String(payment.bill_id)) || (payment.payment_allocations ?? []).some((allocation) => visibleBillIds.has(String(allocation.bill_id))),
     );
     const visibleReceipts = (receiptsResult.data ?? []).filter(
       (receipt) => !receipt.bill_id || visibleBillIds.has(String(receipt.bill_id)),

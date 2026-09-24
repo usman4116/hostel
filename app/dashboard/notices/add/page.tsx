@@ -6,7 +6,9 @@ import {
   useMemo,
   useState,
 } from "react";
+import { saveNoticeWithRecipients } from "@/lib/noticeEditing";
 import Link from "next/link";
+import { noticePublicationError, NOTICE_STATUSES } from "@/lib/canonical";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { notificationWarning, requestEventNotification } from "@/lib/notifications/client";
@@ -25,11 +27,7 @@ type PriorityType =
   | "High"
   | "Urgent";
 
-type StatusType =
-  | "Published"
-  | "Active"
-  | "Draft"
-  | "Inactive";
+type StatusType = "Draft" | "Published" | "Cancelled" | "Archived";
 
 type GenericRecord = {
   id: string | number;
@@ -92,6 +90,7 @@ export default function AddNoticePage() {
   const [pinned, setPinned] =
     useState(false);
 
+  const [showAsPopup, setShowAsPopup] = useState(false);
   const [status, setStatus] =
     useState<StatusType>("Published");
   const [residentSearch, setResidentSearch] = useState("");
@@ -119,8 +118,8 @@ export default function AddNoticePage() {
     return rooms.map((room) => {
       const roomName =
         room.room_number ??
-        room.room_name ??
-        room.name ??
+
+
         room.id;
 
       return {
@@ -133,21 +132,13 @@ export default function AddNoticePage() {
   const residentOptions = useMemo(() => {
     const query = residentSearch.trim().toLowerCase();
     return residents.filter((resident) => {
-      const searchable = `${resident.full_name ?? resident.name ?? ""} ${resident.email ?? ""} ${resident.phone ?? ""}`.toLowerCase();
+      const searchable = `${resident.full_name ?? ""} ${resident.email ?? ""} ${resident.phone ?? ""}`.toLowerCase();
       return String(resident.status ?? "").toLowerCase() !== "archived" && (!query || searchable.includes(query));
     }).map((resident) => {
-      const combinedName = [
-        resident.first_name,
-        resident.last_name,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .trim();
 
       const name =
         resident.full_name ||
-        resident.name ||
-        combinedName ||
+
         `Resident ${resident.id}`;
 
       const phone = resident.phone
@@ -163,23 +154,14 @@ export default function AddNoticePage() {
 
   const staffOptions = useMemo(() => {
     return staffMembers.map((member) => {
-      const combinedName = [
-        member.first_name,
-        member.last_name,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .trim();
 
       const name =
         member.full_name ||
-        member.name ||
-        combinedName ||
+
         `Staff ${member.id}`;
 
       const designation =
-        member.designation ||
-        member.role;
+        member.designation;
 
       return {
         value: member.id,
@@ -215,7 +197,7 @@ export default function AddNoticePage() {
 
       supabase
         .from("staff")
-        .select("*")
+        .select("id::text,full_name")
         .order("id", {
           ascending: true,
         }),
@@ -349,12 +331,13 @@ export default function AddNoticePage() {
       return;
     }
 
+    const publicationError = noticePublicationError(status, publishDate || null, expiryDate || null);
+    if (publicationError) { setErrorMessage(publicationError); return; }
     setSaving(true);
 
-    const { data: createdNotice, error } =
-      await supabase
-        .from("notices")
-        .insert({
+    let createdNotice: { id: string };
+    try {
+      createdNotice = await saveNoticeWithRecipients({
           title: title.trim(),
           description:
             description.trim(),
@@ -384,13 +367,13 @@ export default function AddNoticePage() {
             attachmentUrl.trim() ||
             null,
 
-          publish_date:
-            publishDate,
+          publish_date: publishDate || null,
 
           expiry_date:
             expiryDate || null,
 
           pinned,
+          show_as_popup: showAsPopup,
 
           status,
           notification_recipient_type:
@@ -402,33 +385,12 @@ export default function AddNoticePage() {
                   ? "individual_resident"
                   : null,
           notification_channels: communicationChannels,
-        })
-        .select("id")
-        .single();
-
-    if (error) {
-      setErrorMessage(
-        error.message
-      );
-      setSaving(false);
-      return;
+        }, selectedResidentIds);
+    } catch (saveError) {
+      setErrorMessage(saveError instanceof Error ? saveError.message : "Notice could not be saved."); setSaving(false); return;
     }
 
-    if (audience === "Selected Residents") {
-      const { error: recipientError } = await supabase
-        .from("notice_recipients")
-        .insert(selectedResidentIds.map((selectedId) => ({
-          notice_id: createdNotice.id,
-          resident_id: selectedId,
-        })));
-      if (recipientError) {
-        setErrorMessage(`Notice was created, but its selected recipients could not be saved: ${recipientError.message}`);
-        setSaving(false);
-        return;
-      }
-    }
-
-    const notificationResult = await requestEventNotification(
+    const notificationResult = status === "Published" && audience !== "Staff" && publishDate <= getTodayDate() && (!expiryDate || expiryDate >= getTodayDate()) ? await requestEventNotification(
       "resident_notice_created",
       String(createdNotice.id),
       {
@@ -440,10 +402,10 @@ export default function AddNoticePage() {
               ? [residentId]
               : undefined,
       },
-    );
+    ) : null;
 
     setSuccessMessage(
-      `Notice created successfully for ${notificationResult.recipientCount ?? 0} resident(s).${notificationWarning(notificationResult)}`
+      notificationResult ? `Notice created successfully for ${notificationResult.recipientCount ?? 0} resident(s).${notificationWarning(notificationResult)}` : "Notice saved successfully."
     );
 
     setTimeout(() => {
@@ -502,7 +464,8 @@ export default function AddNoticePage() {
           </div>
         )}
 
-        <form
+        <label className="block my-4"><input type="checkbox" checked={showAsPopup} onChange={event => setShowAsPopup(event.target.checked)} /> Show as Resident Portal popup</label>
+      <form
           onSubmit={handleSubmit}
           className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
         >
@@ -827,20 +790,7 @@ export default function AddNoticePage() {
                 }
                 className="w-full rounded-lg border border-gray-300 px-3 py-2.5"
               >
-                <option value="Published">
-                  Published
-                </option>
-                <option value="Active">
-                  Active
-                </option>
-
-                <option value="Draft">
-                  Draft
-                </option>
-
-                <option value="Inactive">
-                  Inactive
-                </option>
+                {NOTICE_STATUSES.map(value => <option key={value} value={value}>{value}</option>)}
               </select>
             </div>
 

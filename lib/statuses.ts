@@ -35,23 +35,21 @@ export function getOperationalResidentStatus(
 }
 
 export type BedStatus = (typeof BED_STATUS)[keyof typeof BED_STATUS];
-export type ReadableBedStatus = BedStatus | "Available";
+export type ReadableBedStatus = BedStatus;
 
 export const ALLOCATABLE_BED_STATUSES = [
   BED_STATUS.VACANT,
-  "Available",
 ] as const;
 
 export const OPERATIONAL_BED_STATUSES = [
   BED_STATUS.VACANT,
   BED_STATUS.OCCUPIED,
-  "Available",
 ] as const;
 
 export function isAllocatableBedStatus(
   status: string | null | undefined,
-): status is "Vacant" | "Available" {
-  return status === BED_STATUS.VACANT || status === "Available";
+): status is "Vacant" {
+  return status === BED_STATUS.VACANT;
 }
 
 export function isVacantBedStatus(status: string | null | undefined) {

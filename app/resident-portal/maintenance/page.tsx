@@ -248,7 +248,6 @@ export default function ResidentMaintenancePage() {
           room_id: roomResult.data.id,
           title: title.trim(),
           description: description.trim(),
-          complaint_description: description.trim(),
           category,
           priority,
           status: "Pending",
@@ -285,9 +284,7 @@ export default function ResidentMaintenancePage() {
             throw new Error("PHOTO_UPLOAD");
           }
 
-          const photoUrl = supabase.storage
-            .from("maintenance-photos")
-            .getPublicUrl(path).data.publicUrl;
+          const photoUrl = path;
           const photoLinkResult = await supabase
             .from("maintenance_photos")
             .insert({

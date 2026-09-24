@@ -181,15 +181,10 @@ export default function RoomsPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mappedRooms = (roomResult.data ?? []).map((r: any) => ({
         ...r,
-        block_name: r.block_name ?? r.building_name ?? null,
-        floor_number:
-          r.floor_number !== null && r.floor_number !== undefined
-            ? r.floor_number
-            : r.floor && /^-?\d+$/.test(r.floor)
-            ? parseInt(r.floor, 10)
-            : null,
-        description: r.description ?? r.notes ?? null,
-        total_beds: r.total_beds ?? r.capacity ?? 1,
+        block_name: r.block_name ?? null,
+        floor_number: r.floor_number ?? null,
+        description: r.description ?? null,
+        total_beds: r.total_beds ?? 1,
       }));
       setRooms(mappedRooms as Room[]);
     }
@@ -360,19 +355,15 @@ export default function RoomsPage() {
     const payload = {
       room_number: form.room_number.trim(),
       floor_number: floorNumber,
-      floor: floorNumber !== null ? String(floorNumber) : null,
       block_name: nullable(form.block_name),
-      building_name: nullable(form.block_name),
       room_type: form.room_type.trim() || "Shared",
       total_beds: totalBeds,
-      capacity: totalBeds,
       monthly_rent: monthlyRent,
       security_deposit_amount: securityDeposit,
       has_ac: form.has_ac,
       has_attached_bathroom: form.has_attached_bathroom,
       has_balcony: form.has_balcony,
       description: nullable(form.description),
-      notes: nullable(form.description),
       status: form.status,
     };
 

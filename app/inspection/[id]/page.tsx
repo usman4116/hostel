@@ -149,10 +149,10 @@ export default function InspectionDetailPage() {
       {error && <section className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error}</section>}
 
       <section className="grid gap-3 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
-        <Info label="Resident" value={display(resident, ["full_name", "name"])}/>
-        <Info label="Admission" value={display(admission, ["admission_number", "admission_code", "id"])}/>
-        <Info label="Room" value={display(room, ["room_number", "name"])}/>
-        <Info label="Bed" value={bed ? normalizeBedLabel(display(bed, ["bed_number", "name"], "")) : "—"}/>
+        <Info label="Resident" value={display(resident, ["full_name"])}/>
+        <Info label="Admission" value={display(admission, ["admission_number", "id"])}/>
+        <Info label="Room" value={display(room, ["room_number"])}/>
+        <Info label="Bed" value={bed ? normalizeBedLabel(display(bed, ["bed_number"], "")) : "—"}/>
         <Info label="Inspection Type" value={inspection.inspection_type || "—"}/>
         <Info label="Inspection Date" value={inspection.inspection_date}/>
         <Info label="Inspector" value={inspection.inspector_name || "—"}/>

@@ -1,3 +1,4 @@
+import { normalizeIdentityEmail } from "@/lib/identity";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
     let residentQuery = supabaseAdmin
       .from("residents")
       .select("id, status")
-      .ilike("email", email);
+      .eq("email", normalizeIdentityEmail(email));
     if (metadataResidentId) residentQuery = residentQuery.eq("id", metadataResidentId);
     const { data: resident, error: residentError } = await residentQuery.maybeSingle();
     if (residentError || !resident) {
@@ -76,12 +77,17 @@ export async function POST(request: NextRequest) {
       return jsonError("Archived residents cannot submit receipts.", 403);
     }
 
+    const formData = await request.formData();
+    const requestedAdmissionId = String(formData.get("admissionId") ?? "");
+    const submittedAmount = Math.round(Number(formData.get("amount")) * 100) / 100;
+    if (!requestedAdmissionId || !Number.isFinite(submittedAmount) || submittedAmount <= 0) return jsonError("Admission and a positive amount are required.", 400);
     const { data: admission, error: admissionError } = await supabaseAdmin
       .from("admissions")
       .select("id, resident_id, security_deposit, deposit_status, status")
       .eq("resident_id", resident.id)
-      .eq("status", "Pending")
-      .eq("deposit_status", "Pending")
+      .eq("id", requestedAdmissionId)
+      .in("status", ["Pending", "Active"])
+      .in("deposit_status", ["Pending", "Held"])
       .gt("security_deposit", 0)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -93,7 +99,6 @@ export async function POST(request: NextRequest) {
       return jsonError("No outstanding security deposit is available for payment.", 409);
     }
 
-    const formData = await request.formData();
     const file = formData.get("file");
     const paymentMethod = String(formData.get("paymentMethod") ?? "").trim().slice(0, 100);
     const referenceNumber = String(formData.get("referenceNumber") ?? "").trim().slice(0, 120);
@@ -109,28 +114,23 @@ export async function POST(request: NextRequest) {
       return jsonError("The receipt file content does not match its declared file type.", 400);
     }
 
-    const { data: existingReceipt, error: existingError } = await supabaseAdmin
-      .from("payment_receipts")
-      .select("id, resident_id, bill_id, status")
-      .eq("id", admission.id)
-      .maybeSingle();
-    if (existingError) return jsonError("Existing deposit submissions could not be checked.", 500);
-    if (existingReceipt && (existingReceipt.resident_id !== resident.id || existingReceipt.bill_id)) {
-      return jsonError("This deposit cannot use the existing receipt record. Contact an administrator.", 409);
-    }
-    if (existingReceipt && existingReceipt.status !== "Rejected") {
-      return jsonError(
-        existingReceipt.status === "Pending Verification"
-          ? "A security deposit receipt is already pending verification."
-          : "This security deposit receipt has already been processed.",
-        409,
-      );
-    }
+    const { data: depositBill, error: billError } = await supabaseAdmin.from("bills")
+      .select("id,total_amount,bill_status").eq("admission_id", admission.id).eq("resident_id", resident.id)
+      .eq("bill_type", "Security Deposit").neq("bill_status", "Cancelled").maybeSingle();
+    if (billError || !depositBill || ["Draft", "Pending Approval"].includes(depositBill.bill_status)) return jsonError("A released deposit bill for this admission is required.", 409);
+    const { data: paid, error: paidError } = await supabaseAdmin.from("payments").select("amount")
+      .eq("bill_id", depositBill.id).eq("payment_status", "Verified");
+    if (paidError) return jsonError("The deposit balance could not be checked.", 500);
+    const outstanding = Math.round((Number(depositBill.total_amount) - (paid ?? []).reduce((sum, row) => sum + Number(row.amount), 0)) * 100) / 100;
+    if (submittedAmount > outstanding) return jsonError("Amount exceeds this admission's outstanding deposit.", 409);
+    const { data: existingReceipt, error: existingError } = await supabaseAdmin.from("payment_receipts")
+      .select("id").eq("bill_id", depositBill.id).eq("status", "Pending Verification").limit(1).maybeSingle();
+    if (existingError || existingReceipt) return jsonError("A deposit proof is already pending or could not be checked.", 409);
 
     if (referenceNumber) {
       const [paymentReference, receiptReference] = await Promise.all([
         supabaseAdmin.from("payments").select("id").eq("reference_number", referenceNumber).limit(1),
-        supabaseAdmin.from("payment_receipts").select("id").eq("reference_number", referenceNumber).neq("id", admission.id).limit(1),
+        supabaseAdmin.from("payment_receipts").select("id").eq("reference_number", referenceNumber).limit(1),
       ]);
       if (paymentReference.error || receiptReference.error) {
         return jsonError("The payment reference could not be checked.", 500);
@@ -146,16 +146,15 @@ export async function POST(request: NextRequest) {
       .upload(uploadedPath, fileBuffer, { contentType: file.type, cacheControl: "3600", upsert: false });
     if (uploadError) return jsonError("The receipt file could not be uploaded. Please try again.", 500);
 
-    const { data: urlData } = supabaseAdmin.storage.from("payment-receipts").getPublicUrl(uploadedPath);
     const now = new Date().toISOString();
     const receiptPayload = {
       resident_id: resident.id,
-      bill_id: null,
+      bill_id: depositBill.id,
       payment_id: null,
-      receipt_url: urlData.publicUrl,
+      receipt_url: uploadedPath,
       original_file_name: file.name.slice(0, 255),
       reference_number: referenceNumber || null,
-      amount: Number(admission.security_deposit),
+      amount: submittedAmount,
       status: "Pending Verification",
       verified: false,
       verified_by: null,
@@ -167,20 +166,7 @@ export async function POST(request: NextRequest) {
       updated_at: now,
     };
 
-    const receiptResult = existingReceipt
-      ? await supabaseAdmin
-          .from("payment_receipts")
-          .update(receiptPayload)
-          .eq("id", admission.id)
-          .eq("resident_id", resident.id)
-          .eq("status", "Rejected")
-          .select("id")
-          .maybeSingle()
-      : await supabaseAdmin
-          .from("payment_receipts")
-          .insert({ id: admission.id, ...receiptPayload })
-          .select("id")
-          .single();
+    const receiptResult = await supabaseAdmin.from("payment_receipts").insert(receiptPayload).select("id").single();
 
     if (receiptResult.error || !receiptResult.data) {
       await supabaseAdmin.storage.from("payment-receipts").remove([uploadedPath]);

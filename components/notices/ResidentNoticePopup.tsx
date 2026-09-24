@@ -12,7 +12,7 @@ type PopupNotice = NoticeVisibilityRecord & {
   notice_type?: string | null;
 };
 
-const acknowledgementKey = (residentId: string, noticeId: string) =>
+const acknowledgementKey = (residentId: string, noticeId: string | number) =>
   `stayhub:notice-popup:${residentId}:${noticeId}`;
 
 export default function ResidentNoticePopup({

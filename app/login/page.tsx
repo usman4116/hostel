@@ -1,5 +1,8 @@
 "use client";
 
+import { normalizeIdentityEmail } from "@/lib/identity";
+
+
 import { useState, useEffect, type FormEvent } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -96,7 +99,7 @@ export default function ResidentLoginPage() {
       const { data: residentRecord, error: residentError } = await supabase
         .from("residents")
         .select("id, email, status")
-        .ilike("email", lookupEmail)
+        .eq("email", normalizeIdentityEmail(lookupEmail))
         .maybeSingle();
 
       const residentIsActive =

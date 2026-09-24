@@ -71,12 +71,6 @@ export async function POST(request: NextRequest) {
     const authClient = createClient(supabaseUrl, anonKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    console.log({
-      serviceKeyExists: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
-      serviceKeyPrefix: process.env.SUPABASE_SERVICE_ROLE_KEY?.slice(0, 10),
-      serviceKeyLength: process.env.SUPABASE_SERVICE_ROLE_KEY?.length,
-      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    });
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
       auth: {
         persistSession: false,
@@ -249,11 +243,6 @@ export async function POST(request: NextRequest) {
         500,
       );
     }
-
-    await supabaseAdmin
-      .from("residents")
-      .update({ portal_temp_password: temporaryPassword })
-      .eq("id", resident.id);
 
     return NextResponse.json({
       created: true,

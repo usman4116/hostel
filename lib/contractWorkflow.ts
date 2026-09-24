@@ -1,20 +1,19 @@
 export type ContractReadinessRecord = {
-  resident_signature?: string | null;
+  status?: string | null;
   resident_signature_url?: string | null;
   resident_signature_status?: string | null;
   signed_by_resident?: boolean | null;
   signed_at?: string | null;
   contract_content?: string | null;
-  terms?: string | null;
 };
 
 export function getContractTerms(contract: ContractReadinessRecord) {
-  return (contract.contract_content || contract.terms || "").trim();
+  return (contract.contract_content || "").trim();
 }
 
 export function hasResidentSignature(contract: ContractReadinessRecord) {
   return Boolean(
-    (contract.resident_signature_url || contract.resident_signature) &&
+    (contract.resident_signature_url) &&
       ["Submitted", "Approved", "Signed"].includes(
         contract.resident_signature_status ?? "",
       ) &&
@@ -38,6 +37,7 @@ export function isContractSignedAndAccepted(
 ) {
   return Boolean(
     contract &&
+      ["Pending Signature", "Active"].includes(contract.status ?? "") &&
       isResidentSignatureApproved(contract) &&
       getContractTerms(contract),
   );
@@ -51,5 +51,5 @@ export function isAdmissionReadyForActivation(
   depositStatus: string | null | undefined,
   contract: ContractReadinessRecord | null | undefined,
 ) {
-  return isDepositVerified(depositStatus) && isContractSignedAndAccepted(contract);
+  return contract?.status === "Pending Signature" && isDepositVerified(depositStatus) && isContractSignedAndAccepted(contract);
 }

@@ -8,7 +8,9 @@ import {
   useState,
 } from "react";
 
+import { saveNoticeWithRecipients } from "@/lib/noticeEditing";
 import Link from "next/link";
+import { noticePublicationError, bigintId, NOTICE_STATUSES } from "@/lib/canonical";
 import {
   useParams,
   useRouter,
@@ -28,11 +30,7 @@ type PriorityType =
   | "High"
   | "Urgent";
 
-type StatusType =
-  | "Published"
-  | "Active"
-  | "Draft"
-  | "Inactive";
+type StatusType = "Draft" | "Published" | "Cancelled" | "Archived";
 
 type GenericRecord = {
   id: string | number;
@@ -48,7 +46,8 @@ export default function EditNoticePage() {
   const router = useRouter();
   const params = useParams();
 
-  const noticeId = Number(params.id);
+  const noticeId = String(params.id ?? "");
+  const [loadedUpdatedAt, setLoadedUpdatedAt] = useState("");
 
   const [rooms, setRooms] =
     useState<GenericRecord[]>([]);
@@ -93,8 +92,9 @@ export default function EditNoticePage() {
   const [pinned, setPinned] =
     useState(false);
 
+  const [showAsPopup, setShowAsPopup] = useState(false);
   const [status, setStatus] =
-    useState<StatusType>("Active");
+    useState<StatusType>("Draft");
 
   const [loading, setLoading] =
     useState(true);
@@ -113,8 +113,8 @@ export default function EditNoticePage() {
       value: room.id,
       label: `Room ${
         room.room_number ??
-        room.room_name ??
-        room.name ??
+
+
         room.id
       }`,
     }));
@@ -125,7 +125,6 @@ export default function EditNoticePage() {
       value: resident.id,
       label:
         resident.full_name ??
-        resident.name ??
         `Resident ${resident.id}`,
     }));
   }, [residents]);
@@ -135,13 +134,13 @@ export default function EditNoticePage() {
       value: staff.id,
       label:
         staff.full_name ??
-        staff.name ??
         `Staff ${staff.id}`,
     }));
   }, [staffMembers]);
 
   const loadNotice = useCallback(async () => {
     setLoading(true);
+    try { bigintId(noticeId); } catch { setErrorMessage("Invalid notice ID."); setLoading(false); return; }
 
     const [
       noticeResponse,
@@ -152,7 +151,7 @@ export default function EditNoticePage() {
     ] = await Promise.all([
       supabase
         .from("notices")
-        .select("*")
+        .select("id::text,title,description,priority,audience,room_id,resident_id,staff_id::text,attachment_url,publish_date,expiry_date,pinned,show_as_popup,status,updated_at")
         .eq("id", noticeId)
         .single(),
 
@@ -168,7 +167,7 @@ export default function EditNoticePage() {
 
       supabase
         .from("staff")
-        .select("*")
+        .select("id::text,full_name")
         .order("id"),
       supabase
         .from("notice_recipients")
@@ -211,6 +210,7 @@ if (!notice) {
     );
     setSelectedResidentIds((recipientResponse.data ?? []).map((row) => String(row.resident_id)));
 
+    setLoadedUpdatedAt(notice.updated_at ?? "");
     setTitle(notice.title ?? "");
 
     setDescription(
@@ -257,9 +257,8 @@ if (!notice) {
       notice.expiry_date ?? ""
     );
 
-    setPinned(
-      notice.pinned ?? false
-    );
+    setPinned(notice.pinned ?? false);
+    setShowAsPopup(Boolean(notice.show_as_popup));
 
     setStatus(
       notice.status as StatusType
@@ -269,7 +268,7 @@ if (!notice) {
   }, [noticeId]);
 
   useEffect(() => {
-    if (!Number.isFinite(noticeId)) return;
+    if (!noticeId) return;
     const timeoutId = window.setTimeout(() => void loadNotice(), 0);
     return () => window.clearTimeout(timeoutId);
   }, [loadNotice, noticeId]);
@@ -294,7 +293,7 @@ const handleAudienceChange = (
     setErrorMessage("");
     setSuccessMessage("");
 
-    if (!Number.isFinite(noticeId)) {
+    if (!noticeId) {
       setErrorMessage("Invalid notice ID.");
       return;
     }
@@ -341,11 +340,12 @@ const handleAudienceChange = (
       return;
     }
 
+    const publicationError = noticePublicationError(status, publishDate || null, expiryDate || null);
+    if (publicationError) { setErrorMessage(publicationError); return; }
     setSaving(true);
 
-    const { error } = await supabase
-      .from("notices")
-      .update({
+    try {
+      await saveNoticeWithRecipients({
         title: title.trim(),
         description: description.trim(),
         priority,
@@ -377,6 +377,7 @@ const handleAudienceChange = (
           expiryDate || null,
 
         pinned,
+        show_as_popup: showAsPopup,
         status,
         notification_recipient_type:
           audience === "All Residents"
@@ -386,28 +387,9 @@ const handleAudienceChange = (
               : audience === "Specific Resident"
                 ? "individual_resident"
                 : null,
-      })
-      .eq("id", noticeId);
-
-    if (error) {
-      setErrorMessage(error.message);
-      setSaving(false);
-      return;
-    }
-
-    const { error: clearRecipientError } = await supabase
-      .from("notice_recipients")
-      .delete()
-      .eq("notice_id", noticeId);
-    const { error: recipientError } = audience === "Selected Residents"
-      ? await supabase.from("notice_recipients").insert(
-          selectedResidentIds.map((selectedId) => ({ notice_id: noticeId, resident_id: selectedId })),
-        )
-      : { error: null };
-    if (clearRecipientError || recipientError) {
-      setErrorMessage("Notice details were updated, but selected recipients could not be updated.");
-      setSaving(false);
-      return;
+      }, selectedResidentIds, { id: noticeId, updatedAt: loadedUpdatedAt });
+    } catch (saveError) {
+      setErrorMessage(saveError instanceof Error ? saveError.message : "Notice could not be saved."); setSaving(false); return;
     }
 
     setSuccessMessage(
@@ -467,7 +449,8 @@ const handleAudienceChange = (
           </div>
         )}
 
-        <form
+        <label className="block my-4"><input type="checkbox" checked={showAsPopup} onChange={event => setShowAsPopup(event.target.checked)} /> Show as Resident Portal popup</label>
+      <form
   onSubmit={handleSubmit}
   className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
 >
@@ -740,20 +723,7 @@ const handleAudienceChange = (
                 }
                 className="w-full rounded-lg border border-gray-300 px-3 py-2.5"
               >
-                <option value="Published">
-                  Published
-                </option>
-                <option value="Active">
-                  Active
-                </option>
-
-                <option value="Draft">
-                  Draft
-                </option>
-
-                <option value="Inactive">
-                  Inactive
-                </option>
+                {NOTICE_STATUSES.map(value => <option key={value} value={value}>{value}</option>)}
               </select>
             </div>
 

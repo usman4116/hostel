@@ -1,11 +1,9 @@
-DO $$ 
-DECLARE 
-  t text;
-BEGIN 
-  FOR t IN 
-    SELECT tablename FROM pg_tables WHERE schemaname = 'public' 
-  LOOP 
-    EXECUTE format('DROP POLICY IF EXISTS "Allow authenticated full access" ON %I', t);
-    EXECUTE format('CREATE POLICY "Allow authenticated full access" ON %I FOR ALL TO authenticated USING (true) WITH CHECK (true)', t);
-  END LOOP; 
-END $$;
+-- RETIRED SECURITY ARTIFACT. DO NOT EXECUTE.
+--
+-- This file intentionally contains no executable SQL. The former version
+-- granted every authenticated user unrestricted access to every public table.
+-- That behavior is retired and must not be restored here.
+--
+-- Create reviewed, table-specific RLS policies in a separately approved
+-- migration. Keep resident access row-scoped and staff access role-scoped.
+-- Include payment_allocations and payment_status_history in that review.

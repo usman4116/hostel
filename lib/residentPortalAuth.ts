@@ -1,3 +1,4 @@
+import { normalizeIdentityEmail } from "@/lib/identity";
 import { supabase } from "@/lib/supabase";
 
 export type AuthenticatedResident = {
@@ -20,7 +21,7 @@ export async function resolveAuthenticatedResident() {
   const { data: resident, error: residentError } = await supabase
     .from("residents")
     .select("id, email, full_name, status")
-    .ilike("email", authData.user.email.trim().toLowerCase())
+    .eq("email", normalizeIdentityEmail(authData.user.email.trim().toLowerCase()))
     .maybeSingle();
 
   if (residentError) {

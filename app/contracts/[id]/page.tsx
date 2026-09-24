@@ -1,5 +1,6 @@
 "use client";
 
+import { reviewContractSignature } from "@/lib/contractActions";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
@@ -17,8 +18,6 @@ type Contract = {
   monthly_rent: number;
   security_deposit: number;
   status: string | null;
-  contract_status: string | null;
-  resident_signature: string | null;
   resident_signature_url: string | null;
   resident_signature_status: string | null;
   signed_at: string | null;
@@ -66,8 +65,6 @@ export default function ViewContractPage() {
           monthly_rent,
           security_deposit,
           status,
-          contract_status,
-          resident_signature,
           resident_signature_url,
           resident_signature_status,
           signed_at,
@@ -122,7 +119,7 @@ export default function ViewContractPage() {
       const { data: current, error: currentError } = await supabase
         .from("contracts")
         .select(
-          "id, resident_signature, resident_signature_url, resident_signature_status, signed_by_resident, signed_at, status, contract_status",
+          "id, resident_signature_url, resident_signature_status, signed_by_resident, signed_at, status",
         )
         .eq("id", contract.id)
         .maybeSingle();
@@ -130,13 +127,13 @@ export default function ViewContractPage() {
       if (currentError || !current) {
         throw new Error("The contract signature could not be re-checked. Refresh and try again.");
       }
-      if ((current.status || current.contract_status) !== "Pending Signature") {
+      if ((current.status) !== "Pending Signature") {
         throw new Error("Only a Pending Signature contract can be reviewed.");
       }
 
       const currentStatus = current.resident_signature_status || "Pending";
       const hasStoredSignature = Boolean(
-        (current.resident_signature_url || current.resident_signature) &&
+        (current.resident_signature_url) &&
           current.signed_by_resident &&
           current.signed_at,
       );
@@ -153,20 +150,7 @@ export default function ViewContractPage() {
         throw new Error("A re-sign can only be requested for a submitted or rejected signature.");
       }
 
-      const { data: updated, error: updateError } = await supabase
-        .from("contracts")
-        .update({
-          resident_signature_status: action,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", contract.id)
-        .eq("resident_signature_status", current.resident_signature_status)
-        .select("resident_signature_status")
-        .maybeSingle();
-
-      if (updateError || !updated) {
-        throw new Error("The signature status changed before this review completed. Refresh and try again.");
-      }
+      const updated = await reviewContractSignature(contract.id, action);
 
       setContract((existing) =>
         existing
@@ -205,8 +189,8 @@ export default function ViewContractPage() {
   }
 
   const signatureUrl =
-    contract.resident_signature_url ?? contract.resident_signature;
-  const displayedStatus = contract.status ?? contract.contract_status ?? "Draft";
+    contract.resident_signature_url;
+  const displayedStatus = contract.status ?? "Draft";
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">

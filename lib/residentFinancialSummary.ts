@@ -1,4 +1,5 @@
-import { deriveBillStatus, roundMoney, type BillLifecycleStatus } from "@/lib/financials";
+import { deriveBillStatus, roundMoney, type BillLifecycleStatus } from "./financialMath";
+import { paymentBillAmounts } from "./paymentAllocations";
 
 export type FinancialRow = Record<string, unknown>;
 
@@ -23,6 +24,7 @@ export type ResidentFinancialSummary = {
   utilityItems: FinancialLineItem[];
   otherItems: FinancialLineItem[];
   rentCharges: number;
+  rentPaid: number;
   utilityCharges: number;
   otherCharges: number;
   discountApplied: number;
@@ -37,19 +39,15 @@ export type ResidentFinancialSummary = {
 function numberValue(...values: unknown[]) {
   for (const value of values) {
     const parsed = Number(value);
-    if (Number.isFinite(parsed) && parsed !== 0) return parsed;
+    if (Number.isFinite(parsed) && value !== null && value !== undefined && value !== "") return parsed;
   }
   return 0;
 }
 
-function billNumber(row: FinancialRow, primary: string, legacy?: string) {
+function billNumber(row: FinancialRow, primary: string) {
   const primaryValue = row[primary];
   if (primaryValue !== null && primaryValue !== undefined && String(primaryValue).trim() !== "") {
     const parsed = Number(primaryValue);
-    return Number.isFinite(parsed) ? parsed : 0;
-  }
-  if (legacy) {
-    const parsed = Number(row[legacy]);
     return Number.isFinite(parsed) ? parsed : 0;
   }
   return 0;
@@ -72,21 +70,18 @@ function monthValue(input: unknown) {
 }
 
 function isReceivedDeposit(status: unknown) {
-  return ["received", "verified", "paid", "held"].includes(normalized(status));
+  return normalized(status) === "held";
 }
 
 function isSecurityDepositBillRow(row: FinancialRow) {
   return (
-    normalized(value(row, "bill_type")) === "security deposit" ||
-    normalized(value(row, "billing_month")) === "security deposit" ||
-    String(value(row, "bill_number") ?? "").toUpperCase().startsWith("DEP-")
+    normalized(value(row, "bill_type")) === "security deposit"
   );
 }
 
 export function buildResidentFinancialSummary({
   admission,
   room,
-  bed,
   bills,
   payments,
 }: {
@@ -96,23 +91,38 @@ export function buildResidentFinancialSummary({
   bills: FinancialRow[];
   payments: FinancialRow[];
 }): ResidentFinancialSummary {
+  // No current admission means no current account obligations.
+  if (!admission?.id || !["Pending", "Active"].includes(String(admission.status))) {
+    admission = null;
+    room = null;
+    bills = [];
+  }
+  const admissionBills = bills.filter(bill => admission && String(bill.admission_id ?? "") === String(admission.id));
   const verifiedByBill = new Map<string, number>();
   for (const payment of payments) {
-    if (normalized(value(payment, "payment_status", "status")) !== "verified") continue;
-    const billId = String(value(payment, "bill_id") ?? "");
-    if (!billId) continue;
-    verifiedByBill.set(billId, roundMoney((verifiedByBill.get(billId) ?? 0) + numberValue(payment.amount)));
+    if (normalized(value(payment, "payment_status")) !== "verified") continue;
+    const allocations = Array.isArray(payment.allocations)
+      ? payment.allocations.filter((allocation): allocation is FinancialRow => Boolean(allocation && typeof allocation === "object"))
+      : [];
+    for (const allocation of paymentBillAmounts(payment, allocations as Array<{ bill_id: string; amount: number }>)) {
+      if (!allocation.bill_id) continue;
+      verifiedByBill.set(
+        allocation.bill_id,
+        roundMoney((verifiedByBill.get(allocation.bill_id) ?? 0) + numberValue(allocation.amount)),
+      );
+    }
   }
 
-  const activeBills = bills
-    .filter((bill) => normalized(value(bill, "bill_status", "status")) !== "cancelled")
+  const activeBills = admissionBills
+    .filter((bill) => !["cancelled", "draft", "pending approval"].includes(normalized(bill.bill_status)))
+    .filter((bill) => !admission || String(bill.admission_id ?? "") === String(admission.id))
     .map((bill) => {
       const id = String(bill.id ?? "");
       const total = roundMoney(numberValue(bill.total_amount));
       const verifiedPaid = verifiedByBill.get(id) ?? 0;
       const appliedPaid = Math.min(verifiedPaid, total);
       const dueDate = value(bill, "due_date") ? String(value(bill, "due_date")).slice(0, 10) : null;
-      const status = deriveBillStatus(total, appliedPaid, dueDate, String(value(bill, "bill_status", "status") ?? ""));
+      const status = deriveBillStatus(total, appliedPaid, dueDate, String(value(bill, "bill_status") ?? ""));
       return { bill, id, total, verifiedPaid, appliedPaid, balance: Math.max(roundMoney(total - appliedPaid), 0), dueDate, status, month: monthValue(bill.billing_month) };
     })
     .sort((a, b) => b.month.localeCompare(a.month));
@@ -123,6 +133,7 @@ export function buildResidentFinancialSummary({
   let rentDue = 0;
   let rentOverdue = false;
   let rentCharges = 0;
+  let rentPaid = 0;
   let utilityCharges = 0;
   let otherCharges = 0;
   let discountApplied = 0;
@@ -132,12 +143,12 @@ export function buildResidentFinancialSummary({
 
   for (const item of regularBillItems) {
     let paymentRemaining = item.appliedPaid;
-    const rent = roundMoney(billNumber(item.bill, "rent_amount", "room_rent"));
+    const rent = roundMoney(billNumber(item.bill, "rent_amount"));
     const electricity = roundMoney(billNumber(item.bill, "electricity_amount"));
-    const ac = roundMoney(billNumber(item.bill, "ac_amount", "ac_bill"));
-    const maintenance = roundMoney(billNumber(item.bill, "maintenance_fee"));
-    let other = roundMoney(billNumber(item.bill, "other_amount", "other_charges"));
-    const recordedDiscount = Math.max(roundMoney(billNumber(item.bill, "discount_amount", "discount")), 0);
+    const ac = roundMoney(billNumber(item.bill, "ac_amount"));
+    const maintenance = 0;
+    let other = roundMoney(billNumber(item.bill, "other_amount"));
+    const recordedDiscount = Math.max(roundMoney(billNumber(item.bill, "discount_amount")), 0);
     const knownGross = roundMoney(rent + electricity + ac + maintenance + other);
     const expectedNet = Math.max(roundMoney(knownGross - recordedDiscount), 0);
     const missingChargeAdjustment = Math.max(roundMoney(item.total - expectedNet), 0);
@@ -158,6 +169,7 @@ export function buildResidentFinancialSummary({
     discountApplied += effectiveDiscount;
 
     const rentOutstanding = Math.max(roundMoney(netRent - paymentRemaining), 0);
+    rentPaid += Math.min(netRent, paymentRemaining);
     paymentRemaining = Math.max(roundMoney(paymentRemaining - netRent), 0);
     rentDue += rentOutstanding;
     if (rentOutstanding > 0) {
@@ -182,30 +194,44 @@ export function buildResidentFinancialSummary({
 
   const currentBill = regularBillItems[0] ?? null;
   const monthlyRent = currentBill
-    ? roundMoney(numberValue(currentBill.bill.rent_amount, currentBill.bill.room_rent))
-    : roundMoney(numberValue(admission?.monthly_rent, room?.monthly_rent, bed?.monthly_rent));
+    ? roundMoney(numberValue(currentBill.bill.rent_amount))
+    : roundMoney(numberValue(admission?.monthly_rent, room?.monthly_rent));
   const depositRequired = depositBillItem
     ? depositBillItem.total
-    : roundMoney(numberValue(admission?.security_deposit, admission?.deposit_amount));
+    : roundMoney(numberValue(admission?.security_deposit));
   const depositReceived = isReceivedDeposit(value(admission, "deposit_status"));
-  const depositPaid = depositBillItem
-    ? depositBillItem.appliedPaid
-    : depositReceived
-      ? depositRequired
-      : 0;
-  const depositBalance = depositBillItem
-    ? depositBillItem.balance
-    : Math.max(roundMoney(depositRequired - depositPaid), 0);
+  // Ledger evidence wins over a cached Held flag, including reversals. A Held
+  // balance without ledger evidence is retained only for this exact admission.
+  const depositIds = new Set(admissionBills.filter(isSecurityDepositBillRow).map(bill => String(bill.id)));
+  const hasDepositLedger = payments.some(payment => {
+    const allocations = Array.isArray(payment.allocations)
+      ? payment.allocations.filter((allocation): allocation is FinancialRow => Boolean(allocation && typeof allocation === "object"))
+      : [];
+    const ledgerRows = allocations.length
+      ? allocations
+      : payment.bill_id
+        ? [{ bill_id: String(payment.bill_id) }]
+        : [];
+    return ledgerRows
+      .some(allocation => depositIds.has(String(allocation.bill_id)));
+  }) ||
+    admissionBills.some(bill => isSecurityDepositBillRow(bill) && normalized(bill.bill_status) === "cancelled");
+  const depositPaid = hasDepositLedger ? (depositBillItem?.appliedPaid ?? 0) : depositReceived ? depositRequired : (depositBillItem?.appliedPaid ?? 0);
+  const depositBalance = Math.max(roundMoney(depositRequired - depositPaid), 0);
   const depositStatus =
     depositBalance === 0 && depositRequired > 0
       ? "Held"
       : String(
-          value(admission, "deposit_status") ??
+          (depositBalance > 0 ? "Pending" : value(admission, "deposit_status")) ??
             (depositRequired > 0 ? "Pending" : "Not required"),
         );
 
+  // Admission rent remains due before its first released bill. Never create a fake bill ID.
+  const unbilledRent = !currentBill && admission && ["Pending", "Active"].includes(String(admission.status)) ? monthlyRent : 0;
+  rentDue += unbilledRent;
+  rentCharges += unbilledRent;
   const totalCharges = roundMoney(
-    regularBillItems.reduce((sum, item) => sum + item.total, 0) + depositRequired,
+    regularBillItems.reduce((sum, item) => sum + item.total, 0) + depositRequired + unbilledRent,
   );
   const verifiedPayments = roundMoney(
     regularBillItems.reduce((sum, item) => sum + item.verifiedPaid, 0) + depositPaid,
@@ -214,7 +240,7 @@ export function buildResidentFinancialSummary({
     regularBillItems.reduce((sum, item) => sum + item.appliedPaid, 0) + depositPaid,
   );
   const totalOutstanding = roundMoney(
-    regularBillItems.reduce((sum, item) => sum + item.balance, 0) + depositBalance,
+    regularBillItems.reduce((sum, item) => sum + item.balance, 0) + depositBalance + unbilledRent,
   );
   const outstandingBills = regularBillItems.filter((item) => item.balance > 0);
   const deadlines = [
@@ -239,10 +265,11 @@ export function buildResidentFinancialSummary({
     depositRequired,
     depositPaid,
     depositBalance: Math.max(roundMoney(depositRequired - depositPaid), 0),
-    depositStatus: String(value(admission, "deposit_status") ?? (depositRequired > 0 ? "Pending" : "Not required")),
+    depositStatus,
     utilityItems,
     otherItems,
     rentCharges: roundMoney(rentCharges),
+    rentPaid: roundMoney(rentPaid),
     utilityCharges: roundMoney(utilityCharges),
     otherCharges: roundMoney(otherCharges),
     discountApplied: roundMoney(discountApplied),

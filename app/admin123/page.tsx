@@ -1,5 +1,8 @@
 "use client";
 
+import { normalizeIdentityEmail } from "@/lib/identity";
+
+
 import { useState, useEffect, type FormEvent } from "react";
 import { getFirstAllowedRoute } from "@/lib/permissions";
 import { supabase } from "@/lib/supabase";
@@ -97,7 +100,7 @@ export default function AdminLoginPage() {
       const { data: staffUser, error: staffError } = await supabase
         .from("staff_users")
         .select("email, role, status, permissions")
-        .ilike("email", lookupEmail)
+        .eq("email", normalizeIdentityEmail(lookupEmail))
         .maybeSingle();
 
       if (!staffError && staffUser) {

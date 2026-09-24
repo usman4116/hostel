@@ -12,7 +12,6 @@ import { isOperationalBedStatus } from "@/lib/statuses";
 type RoomOption = {
   id: string;
   room_number: string;
-  capacity: number;
   total_beds: number;
   status: string;
   active_beds_count: number;
@@ -39,7 +38,7 @@ export default function AddBedPage() {
         await Promise.all([
           supabase
             .from("rooms")
-            .select("id, room_number, capacity, total_beds, status")
+            .select("id, room_number, total_beds, status")
             .neq("status", "Inactive")
             .order("room_number", { ascending: true }),
           supabase.from("beds").select("id, room_id, bed_number, status"),
@@ -59,7 +58,6 @@ export default function AddBedPage() {
         return {
           id: r.id,
           room_number: r.room_number,
-          capacity: Number(r.capacity) || 1,
           total_beds: Number(r.total_beds) || 1,
           status: r.status,
           active_beds_count: count,
@@ -200,7 +198,7 @@ export default function AddBedPage() {
                       {rooms.map((room) => (
                         <option key={room.id} value={room.id}>
                           Room {room.room_number} ({room.active_beds_count} /{" "}
-                          {room.capacity} beds)
+                          {room.total_beds} beds)
                         </option>
                       ))}
                     </select>

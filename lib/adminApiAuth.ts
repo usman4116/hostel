@@ -1,3 +1,4 @@
+import { normalizeIdentityEmail } from "@/lib/identity";
 import "server-only";
 
 import { NextRequest, NextResponse } from "next/server";
@@ -72,7 +73,7 @@ export async function requireStaff(
   const { data: staffRows, error: staffError } = await supabaseAdmin
     .from("staff_users")
     .select("id, email, full_name, role, status")
-    .ilike("email", email);
+    .eq("email", normalizeIdentityEmail(email));
 
   if (staffError) {
     return { staff: null, response: apiError("Your admin permissions could not be verified.", 500) };

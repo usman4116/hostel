@@ -1,5 +1,8 @@
 "use client";
 
+import { normalizeIdentityEmail } from "@/lib/identity";
+
+
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import {
@@ -37,7 +40,7 @@ export function usePermissions() {
       const { data } = await supabase
         .from("staff_users")
         .select("id, email, full_name, phone, role, status, permissions")
-        .ilike("email", email)
+        .eq("email", normalizeIdentityEmail(email))
         .maybeSingle();
 
       if (data) {

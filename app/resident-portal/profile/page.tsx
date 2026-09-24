@@ -11,33 +11,16 @@ import {
 type Resident = {
   id: string;
   full_name?: string | null;
-  first_name?: string | null;
-  last_name?: string | null;
   phone?: string | null;
-  mobile?: string | null;
   email?: string | null;
   cnic?: string | null;
-  national_id?: string | null;
   emergency_contact?: string | null;
-  emergency_phone?: string | null;
-  address?: string | null;
+  permanent_address?: string | null;
   status?: string | null;
   photo_url?: string | null;
 };
 
-function residentName(resident: Resident | null) {
-  if (!resident) return "Resident";
-
-  if (resident.full_name) {
-    return resident.full_name;
-  }
-
-  const fullName = `${resident.first_name ?? ""} ${
-    resident.last_name ?? ""
-  }`.trim();
-
-  return fullName || "Resident";
-}
+function residentName(resident: Resident | null) { return resident?.full_name || "Resident"; }
 
 export default function ResidentProfilePage() {
   const [resident, setResident] = useState<Resident | null>(null);
@@ -160,7 +143,7 @@ export default function ResidentProfilePage() {
                     label="Phone"
                     value={
                       resident.phone ||
-                      resident.mobile ||
+
                       "Not recorded"
                     }
                   />
@@ -174,7 +157,7 @@ export default function ResidentProfilePage() {
                     label="CNIC"
                     value={
                       resident.cnic ||
-                      resident.national_id ||
+
                       "Not recorded"
                     }
                   />
@@ -183,7 +166,7 @@ export default function ResidentProfilePage() {
                     label="Emergency Contact"
                     value={
                       resident.emergency_contact ||
-                      resident.emergency_phone ||
+
                       "Not recorded"
                     }
                   />
@@ -195,7 +178,7 @@ export default function ResidentProfilePage() {
 
                   <InfoCard
                     label="Address"
-                    value={resident.address || "Not recorded"}
+                    value={resident.permanent_address || "Not recorded"}
                   />
                 </div>
               </div>

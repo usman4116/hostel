@@ -51,7 +51,7 @@ export default function AddComplaintPage() {
     setLoading(true);
 
     const { error } = await supabase.from("complaints").insert({
-      resident_id: Number(residentId),
+      resident_id: residentId,
       category,
       subject,
       description,

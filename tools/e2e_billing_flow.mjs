@@ -195,16 +195,6 @@ async function main() {
 
       if (created) {
         temporaryPassword = payload.temporaryPassword;
-        const { data: stored } = await admin
-          .from("residents")
-          .select("portal_temp_password")
-          .eq("id", residentId)
-          .maybeSingle();
-        check(
-          "Temporary password persisted on the resident record",
-          stored?.portal_temp_password === temporaryPassword,
-          "residents.portal_temp_password matches the value shown to the admin",
-        );
 
         const { data: authUsers } = await admin.auth.admin.listUsers({
           page: 1,
@@ -246,7 +236,7 @@ async function main() {
     const { data: beds } = await admin
       .from("beds")
       .select("id, bed_number, room_id, status")
-      .in("status", ["Available", "Vacant"])
+      .in("status", ["Vacant"])
       .limit(1);
 
     const bed = (beds ?? [])[0] ?? null;
@@ -277,7 +267,7 @@ async function main() {
         monthly_rent: monthlyRent,
         security_deposit: monthlyRent,
         deposit_status: "Pending",
-        status: "Active",
+        status: "Pending",
       })
       .select("id, monthly_rent, status")
       .single();
@@ -303,12 +293,10 @@ async function main() {
           admission_id: admissionId,
           template_id: template.id,
           contract_content: template.content,
-          terms: template.content,
           start_date: new Date().toISOString().slice(0, 10),
           monthly_rent: monthlyRent,
           security_deposit: monthlyRent,
           status: "Pending Signature",
-          contract_status: "Pending Signature",
         })
         .select("id, template_id, admission_id, contract_content")
         .single();
@@ -355,7 +343,7 @@ async function main() {
           portal.status === 200 ? "" : `HTTP ${portal.status} ${portal.payload?.error ?? ""}`)) {
           // keep going: later phases still report usefully
         } else {
-          check("Portal shows the active admission", data.admission?.id === admissionId);
+          check("Portal shows the current admission", data.admission?.id === admissionId);
           check("Portal shows the room details", Boolean(data.room?.room_number));
           check("Portal shows the bed details", Boolean(data.bed?.bed_number));
           check("Portal shows the contract", data.contract?.admission_id === admissionId);
@@ -365,6 +353,8 @@ async function main() {
       record("Resident portal data loads", "skip", "no temporary password available");
     }
 
+    // Activation is deliberately not fabricated by the fixture. Complete staff signature
+    // approval and deposit verification before running bulk billing assertions.
     // === Phase 4: bulk generation ========================================
     const month = billingMonth();
     if (staffToken) {
@@ -535,15 +525,15 @@ async function main() {
 
       const { data: otherResidents } = await residentDb
         .from("residents")
-        .select("id, portal_temp_password")
+        .select("id, cnic")
         .neq("id", residentId)
         .limit(1);
       check(
-        "RLS stops a resident from reading other residents' credentials",
+        "RLS stops a resident from reading other residents' personal records",
         (otherResidents ?? []).length === 0,
         (otherResidents ?? []).length === 0
           ? ""
-          : "a resident token can read residents.portal_temp_password for other people",
+          : "a resident token can read other residents' records",
       );
     }
   } catch (error) {

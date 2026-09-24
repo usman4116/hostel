@@ -1,3 +1,4 @@
+import { normalizeIdentityEmail } from "@/lib/identity";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
     const { data: authData, error: authError } = await authClient.auth.getUser(token);
     const email = authData.user?.email?.trim().toLowerCase() ?? "";
     if (authError || !email) return json({ error: "Your session could not be verified." }, 401);
-    const { data: staff } = await supabaseAdmin.from("staff_users").select("status").ilike("email", email).maybeSingle();
+    const { data: staff } = await supabaseAdmin.from("staff_users").select("status").eq("email", normalizeIdentityEmail(email)).maybeSingle();
     if (!staff || String(staff.status).toLowerCase() !== "active") return json({ error: "You do not have permission to view notification logs." }, 403);
     const { data, error } = await supabaseAdmin
       .from("notification_deliveries")
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
       const { data: staff } = await supabaseAdmin
         .from("staff_users")
         .select("role, status")
-        .ilike("email", email)
+        .eq("email", normalizeIdentityEmail(email))
         .maybeSingle();
       if (
         !staff ||
@@ -113,7 +114,7 @@ export async function POST(request: NextRequest) {
         supabaseAdmin
           .from("residents")
           .select("id, status")
-          .ilike("email", email)
+          .eq("email", normalizeIdentityEmail(email))
           .maybeSingle(),
         supabaseAdmin
           .from("payment_receipts")

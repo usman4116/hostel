@@ -86,7 +86,7 @@ function createContractNumber() {
 }
 
 function isAdmissionRoomStatus(status: string | null) {
-  return status === "Available" || status === "Active";
+  return ["Available", "Partially Occupied", "Occupied"].includes(status ?? "");
 }
 
 function normalizeEmail(value: string | null) {
@@ -374,7 +374,7 @@ export default function AdmissionForm({
       try {
         const login = await ensureResidentLogin(String(newResident.id));
         loginMessage = login.created
-          ? ` Portal login: ${login.email} | Temporary password: ${login.temporaryPassword}`
+          ? ` Portal login: ${login.email} | One-time temporary password: ${login.temporaryPassword} (Provide to resident now; not stored in database).`
           : ` A portal login already exists for ${login.email}.`;
       } catch (loginError) {
         loginMessage = ` Portal login was not created automatically. ${
@@ -424,7 +424,7 @@ export default function AdmissionForm({
     }
 
     try {
-      const [residentResult, roomResult, currentAdmissionResult, previousDepositResult] =
+      const [residentResult, roomResult, currentAdmissionResult] =
         await Promise.all([
           supabase
             .from("residents")
@@ -441,13 +441,6 @@ export default function AdmissionForm({
             .select("id")
             .eq("resident_id", residentId)
             .in("status", ["Active", "Pending"])
-            .limit(1)
-            .maybeSingle(),
-          supabase
-            .from("admissions")
-            .select("id")
-            .eq("resident_id", residentId)
-            .eq("deposit_status", "Held")
             .limit(1)
             .maybeSingle(),
         ]);
@@ -579,8 +572,8 @@ export default function AdmissionForm({
         );
       }
 
-      const hasExistingDeposit = Boolean(previousDepositResult?.data);
-      const effectiveSecurityDeposit = hasExistingDeposit ? 0 : Number(securityDeposit || 0);
+      // A previous admission does not waive this admission's deposit.
+      const effectiveSecurityDeposit = Number(securityDeposit || 0);
 
       const { data: admissionData, error: admissionError } = await supabase
         .from("admissions")
@@ -634,14 +627,12 @@ export default function AdmissionForm({
         bed_id: bedId,
         template_id: template.id,
         contract_content: termsSnapshot,
-        terms: termsSnapshot,
         start_date: admissionDate,
         end_date: null,
         monthly_rent: Number(monthlyRent),
         security_deposit: Number(securityDeposit || 0),
         notice_period_days: 30,
         status: "Pending Signature",
-        contract_status: "Pending Signature",
         resident_signature_status: "Pending",
         owner_signature_status: "Pending",
         signed_by_resident: false,
@@ -728,7 +719,7 @@ export default function AdmissionForm({
       setMessage(
         `Admission saved as Pending and its contract was prepared for resident signature.${
           portalLogin.created && portalLogin.temporaryPassword
-            ? ` Portal login: ${portalLogin.email} | Temporary password: ${portalLogin.temporaryPassword}`
+            ? ` Portal login: ${portalLogin.email} | One-time temporary password: ${portalLogin.temporaryPassword} (Provide to resident now; not stored in database).`
             : ` Portal access is ready for ${portalLogin.email}.`
         }${notificationWarning(notificationResult)}${notificationWarning(loginNotificationResult)}`,
       );

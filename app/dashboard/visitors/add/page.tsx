@@ -52,7 +52,7 @@ export default function AddVisitorPage() {
     setLoading(true);
 
     const { error } = await supabase.from("visitors").insert({
-      resident_id: Number(residentId),
+      resident_id: residentId,
       visitor_name: visitorName,
       cnic: cnic || null,
       mobile_number: mobileNumber || null,

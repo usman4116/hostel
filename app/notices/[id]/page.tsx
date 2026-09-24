@@ -1,5 +1,6 @@
-"use client";
+﻿"use client";
 
+import { bigintId } from "@/lib/canonical";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -12,7 +13,7 @@ type Notice = {
   title: string;
   description: string;
   notice_type: string | null;
-  target_audience: string | null;
+
   audience: string | null;
   resident_id: string | null;
   room_id: string | null;
@@ -20,7 +21,6 @@ type Notice = {
   status: string | null;
   publish_date: string | null;
   expiry_date: string | null;
-  is_active: boolean | null;
   pinned: boolean | null;
   show_as_popup: boolean | null;
 };
@@ -34,10 +34,11 @@ export default function NoticeDetailPage() {
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
+    try { bigintId(id); } catch { setError("Invalid notice ID."); setLoading(false); return; }
     const result = await supabase
       .from("notices")
       .select(
-        "id,notice_number,title,description,notice_type,target_audience,audience,resident_id,room_id,priority,status,publish_date,expiry_date,is_active,pinned,show_as_popup",
+        "id::text,notice_number,title,description,notice_type,audience,resident_id,room_id,priority,status,publish_date,expiry_date,pinned,show_as_popup",
       )
       .eq("id", id)
       .maybeSingle();
@@ -101,13 +102,13 @@ export default function NoticeDetailPage() {
               <Detail label="Priority" value={notice.priority || "Normal"} />
               <Detail
                 label="Audience"
-                value={notice.audience || notice.target_audience || "Legacy"}
+                value={notice.audience  || "Legacy"}
               />
               <Detail label="Published" value={notice.publish_date || "Not set"} />
               <Detail label="Expires" value={notice.expiry_date || "No expiry"} />
               <Detail label="Popup" value={notice.show_as_popup ? "Enabled" : "Disabled"} />
               <Detail label="Pinned" value={notice.pinned ? "Yes" : "No"} />
-              <Detail label="Active flag" value={notice.is_active === false ? "No" : "Yes"} />
+
             </dl>
 
             <p className="mt-6 rounded-2xl border border-slate-200 p-4 text-sm text-slate-600">

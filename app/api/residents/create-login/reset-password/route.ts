@@ -1,3 +1,4 @@
+import { normalizeIdentityEmail } from "@/lib/identity";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type User } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest) {
     const { data: staff, error: staffError } = await supabaseAdmin
       .from("staff_users")
       .select("id, email, role, status")
-      .ilike("email", staffEmail)
+      .eq("email", normalizeIdentityEmail(staffEmail))
       .maybeSingle();
     const staffRole = String(staff?.role ?? "").trim().toLowerCase();
     const staffStatus = String(staff?.status ?? "").trim().toLowerCase();
@@ -176,11 +177,6 @@ export async function POST(request: NextRequest) {
     if (updateError || !updatedUser.user) {
       return jsonError("The resident portal password could not be reset.", 500);
     }
-
-    await supabaseAdmin
-      .from("residents")
-      .update({ portal_temp_password: temporaryPassword })
-      .eq("id", resident.id);
 
     return NextResponse.json(
       { email, temporaryPassword },

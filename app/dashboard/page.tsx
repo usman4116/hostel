@@ -59,14 +59,14 @@ export default function DashboardPage() {
 
     const results = await Promise.all([
       supabase.from("residents").select("id,full_name,resident_code,status,created_at,updated_at").order("created_at", { ascending: false }),
-      supabase.from("admissions").select("id,admission_number,resident_id,room_id,bed_id,status,deposit_status,expected_leaving_date,created_at,updated_at").order("created_at", { ascending: false }),
-      supabase.from("contracts").select("id,contract_number,resident_id,admission_id,status,contract_status,resident_signature,resident_signature_url,resident_signature_status,signed_by_resident,signed_at,contract_content,terms,created_at,updated_at").order("created_at", { ascending: false }),
-      supabase.from("bills").select("id,bill_number,resident_id,rent_amount,total_amount,due_date,bill_status,created_at,updated_at").order("created_at", { ascending: false }),
-      supabase.from("payments").select("id,payment_number,bill_id,resident_id,amount,payment_status,verified_at,created_at,updated_at").order("created_at", { ascending: false }),
+      supabase.from("admissions").select("id,admission_number,resident_id,room_id,bed_id,monthly_rent,security_deposit,status,deposit_status,expected_leaving_date,created_at,updated_at").order("created_at", { ascending: false }),
+      supabase.from("contracts").select("id,contract_number,resident_id,admission_id,status,resident_signature_url,resident_signature_status,signed_by_resident,signed_at,contract_content,created_at,updated_at").order("created_at", { ascending: false }),
+      supabase.from("bills").select("id,bill_number,resident_id,admission_id,billing_month,bill_type,rent_amount,electricity_amount,ac_amount,other_amount,discount_amount,total_amount,due_date,bill_status,created_at,updated_at").order("created_at", { ascending: false }),
+      supabase.from("payments").select("id,payment_number,bill_id,resident_id,amount,payment_status,verified_at,created_at,updated_at,payment_allocations(payment_id,bill_id,amount)").order("created_at", { ascending: false }),
       supabase.from("payment_receipts").select("id,resident_id,bill_id,status,verified_at,created_at,updated_at").order("created_at", { ascending: false }),
       supabase.from("maintenance_requests").select("id,request_number,resident_id,title,priority,status,completed_at,created_at,updated_at").order("created_at", { ascending: false }),
       supabase.from("room_inspections").select("id,inspection_number,resident_id,inspection_type,status,inspection_date,created_at,updated_at").order("created_at", { ascending: false }),
-      supabase.from("notices").select("id,notice_number,title,status,is_active,publish_date,expiry_date,created_at,updated_at").order("created_at", { ascending: false }),
+      supabase.from("notices").select("id::text,notice_number,title,status,publish_date,expiry_date,created_at,updated_at").order("created_at", { ascending: false }),
       supabase.from("rooms").select("id,status"),
       supabase.from("beds").select("id,room_id,status"),
     ]);

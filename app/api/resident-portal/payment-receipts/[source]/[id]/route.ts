@@ -1,3 +1,4 @@
+import { normalizeIdentityEmail } from "@/lib/identity";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isSecurityDepositReceipt, receiptPaymentMethod } from "@/lib/paymentReceiptPurpose";
@@ -13,7 +14,7 @@ function value(input: unknown) {
 }
 
 function isPaid(input: unknown) {
-  return ["verified", "paid", "completed", "received"].includes(value(input).toLowerCase());
+  return value(input).toLowerCase() === "verified";
 }
 
 export async function GET(request: NextRequest, context: { params: Promise<{ source: string; id: string }> }) {
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ sou
     if (authError || !user || !email) return errorResponse("Please sign in to download this receipt.", 401);
 
     const metadataResidentId = typeof user.user_metadata?.resident_id === "string" ? user.user_metadata.resident_id.trim() : "";
-    let residentQuery = supabaseAdmin.from("residents").select("id, resident_code, full_name, email, status").ilike("email", email);
+    let residentQuery = supabaseAdmin.from("residents").select("id, resident_code, full_name, email, status").eq("email", normalizeIdentityEmail(email));
     if (metadataResidentId) residentQuery = residentQuery.eq("id", metadataResidentId);
     const { data: resident, error: residentError } = await residentQuery.maybeSingle();
     if (residentError) return errorResponse("Your resident profile could not be verified.", 500);
@@ -57,13 +58,20 @@ export async function GET(request: NextRequest, context: { params: Promise<{ sou
       paymentMethod = value(record.payment_method) || paymentMethod;
       receiptNumber = value(record.payment_number);
     } else {
-      const result = await supabaseAdmin.from("payment_receipts").select("id, bill_id, amount, reference_number, status, verified_by, verified_at, notes, created_at").eq("id", id).eq("resident_id", resident.id).maybeSingle();
+      const result = await supabaseAdmin.from("payment_receipts").select("id, bill_id, payment_id, amount, reference_number, status, verified_by, verified_at, notes, created_at").eq("id", id).eq("resident_id", resident.id).maybeSingle();
       if (result.error) return errorResponse("The receipt could not be loaded.", 500);
       record = result.data;
       if (!record) return errorResponse("Receipt not found.", 404);
-      if (!isPaid(record.status)) return errorResponse("A receipt is available after the payment is verified.", 409);
+      if (!isPaid(record.status) || !record.payment_id) return errorResponse("A receipt requires a linked verified payment.", 409);
+      const { data: linkedPayment, error: linkedError } = await supabaseAdmin.from("payments")
+        .select("id, bill_id, amount, payment_status, payment_allocations(bill_id,amount)").eq("id", record.payment_id).eq("resident_id", resident.id).maybeSingle();
+      if (linkedError || !linkedPayment || !isPaid(linkedPayment.payment_status) || linkedPayment.bill_id !== record.bill_id || Number(linkedPayment.amount) !== Number(record.amount)) {
+        return errorResponse("The linked payment is not verified or needs reconciliation. This proof cannot be downloaded as a paid receipt.", 409);
+      }
       billId = value(record.bill_id);
-      paymentType = isSecurityDepositReceipt(record.notes) ? "Security deposit" : billId ? "Bill payment" : "Receipt payment";
+      paymentType = Array.isArray(linkedPayment.payment_allocations) && linkedPayment.payment_allocations.length > 1
+        ? "Rent + Security Deposit"
+        : isSecurityDepositReceipt(record.notes) ? "Security deposit" : billId ? "Bill payment" : "Receipt payment";
       paymentMethod = receiptPaymentMethod(record.notes) || paymentMethod;
     }
 

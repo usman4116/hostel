@@ -1,5 +1,8 @@
 "use client";
 
+import { normalizeIdentityEmail } from "@/lib/identity";
+
+
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -42,7 +45,7 @@ function SidebarContent() {
       const { data } = await supabase
         .from("staff_users")
         .select("role, status, permissions")
-        .ilike("email", email)
+        .eq("email", normalizeIdentityEmail(email))
         .maybeSingle();
 
       if (!active) return;

@@ -1,5 +1,8 @@
 "use client";
 
+import { normalizeIdentityEmail } from "@/lib/identity";
+
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -104,7 +107,7 @@ export default function ProfileDropdown() {
       const { data, error } = await supabase
         .from("staff_users")
         .select("id, full_name, email, phone, role, status")
-        .ilike("email", user.email)
+        .eq("email", normalizeIdentityEmail(user.email))
         .maybeSingle();
 
       if (error) {

@@ -1,3 +1,4 @@
+import { normalizeIdentityEmail } from "@/lib/identity";
 import "server-only";
 
 import { createClient, type User } from "@supabase/supabase-js";
@@ -40,7 +41,7 @@ export async function verifyDataAdmin(request: NextRequest): Promise<
   const { data: staff, error: staffError } = await supabaseAdmin
     .from("staff_users")
     .select("id, role, status")
-    .ilike("email", email)
+    .eq("email", normalizeIdentityEmail(email))
     .maybeSingle();
   const role = String(staff?.role ?? "").trim().toLowerCase();
   const status = String(staff?.status ?? "").trim().toLowerCase();
