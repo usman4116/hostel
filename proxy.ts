@@ -31,6 +31,7 @@ const adminRoutes = [
 const residentPortalPath = "/resident-portal";
 const residentPortalDataPath = "/api/resident-portal/data";
 const residentPasswordSetupPath = "/resident-portal/change-password";
+const adminPasswordSetupPath = "/admin123/change-password";
 const loginPath = "/login";
 
 // API routes that verify a bearer token and the caller's staff role themselves,
@@ -133,6 +134,7 @@ export async function proxy(request: NextRequest) {
     pathname === loginPath ||
     pathname === "/admin123" ||
     pathname === residentPasswordSetupPath ||
+    pathname === adminPasswordSetupPath ||
     selfAuthenticatedApiPaths.has(pathname)
   ) {
     return response;
