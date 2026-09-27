@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo } from "react";
 import {
@@ -23,7 +23,7 @@ export default function DashboardCharts({ data }: { data: DashboardData }) {
   const occupancyData = useMemo(() => {
     const totalBeds = beds.length;
     const occupiedBeds = beds.filter((bed: any) => bed.status === "Occupied").length;
-    const availableBeds = beds.filter((bed: any) => bed.bed.status === "Vacant").length;
+    const availableBeds = beds.filter((bed: any) => bed.status === "Vacant").length;
     const inactiveBeds = beds.filter((bed: any) => bed.status === "Inactive").length;
 
     return [
@@ -123,3 +123,4 @@ export default function DashboardCharts({ data }: { data: DashboardData }) {
     </div>
   );
 }
+
