@@ -1,7 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl =
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  "https://ttogtopkzxxwmlkedumr.supabase.co";
+const supabaseAnonKey =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  "sb_publishable_geawnrg0CpkOgkzvY5Oe7A_LYiqFpU5";
 const COOKIE_CHUNK_SIZE = 3000;
 const MAX_COOKIE_CHUNKS = 12;
 
