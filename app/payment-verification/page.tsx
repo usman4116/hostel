@@ -472,14 +472,27 @@ export default function PaymentVerificationPage() {
                         </td>
 
                         <td className="px-5 py-4">
-                          <a
-                            href={receipt.receipt_url}
-                            target="_blank"
-                            rel="noreferrer"
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const storedPath = receipt.receipt_url;
+                              if (/^https?:\/\//i.test(storedPath)) {
+                                window.open(storedPath, "_blank", "noopener,noreferrer");
+                                return;
+                              }
+                              const { data, error } = await supabase.storage
+                                .from("payment-receipts")
+                                .createSignedUrl(storedPath, 60 * 5);
+                              if (error || !data?.signedUrl) {
+                                setError(getSupabaseErrorMessage(error, "Unable to open this receipt."));
+                                return;
+                              }
+                              window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+                            }}
                             className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700"
                           >
                             Open Receipt
-                          </a>
+                          </button>
                         </td>
 
                         <td className="px-5 py-4">

@@ -225,7 +225,7 @@ export default function ResidentPortalPage() {
   const isReadOnlyView = false;
   const admissionStatus = firstText(admission, ["status"]);
   const hasActiveAdmission = admissionStatus === "Active";
-  const contractSigned = isContractSignedAndAccepted(contract ?? undefined);
+  const contractSigned = Boolean(firstText(contract, ["resident_signature_url"]));
   const depositVerified = isDepositVerified(firstText(admission, ["deposit_status"]));
   const portalTabs: PortalTab[] = hasActiveAdmission
     ? ["Overview", "Profile", "Room", "Contract", "Security Deposit", "Bills", "Payments", "Notices", "Inspections", "Maintenance"]
