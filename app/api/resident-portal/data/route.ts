@@ -165,6 +165,18 @@ export async function GET(request: NextRequest) {
     const visiblePayments = (paymentsResult.data ?? []).filter(
       (payment) => !payment.bill_id || visibleBillIds.has(String(payment.bill_id)) || (payment.payment_allocations ?? []).some((allocation) => visibleBillIds.has(String(allocation.bill_id))),
     );
+    const normalizedPayments = visiblePayments.map(
+      ({ payment_allocations, ...payment }) => ({
+        ...payment,
+        allocations: (payment_allocations ?? [])
+          .filter((allocation) => visibleBillIds.has(String(allocation.bill_id)))
+          .map((allocation) => ({
+            bill_id: allocation.bill_id,
+            amount: Number(allocation.amount ?? 0),
+          })),
+      }),
+    );
+
     const visibleReceipts = (receiptsResult.data ?? []).filter(
       (receipt) => !receipt.bill_id || visibleBillIds.has(String(receipt.bill_id)),
     );
@@ -178,7 +190,7 @@ export async function GET(request: NextRequest) {
           room: roomResult.data,
           bed: bedResult.data,
           bills: visibleBills,
-          payments: visiblePayments,
+          payments: normalizedPayments,
           receipts: visibleReceipts,
         },
       },
