@@ -1699,7 +1699,7 @@ const depositVerified = isDepositVerified(
         : "bg-slate-100 text-slate-600"
     }`}
   >
-    {readyForActivation ? "Ready" : "Not Ready"}
+    {admission.status === "Active" ? "Active" : readyForActivation ? "Ready" : "Not Ready"}
   </span>
 </td>
                          <td className="px-5 py-4">
