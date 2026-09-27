@@ -100,28 +100,30 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-gray-100 text-slate-950 dark:bg-slate-950 dark:text-slate-100">
-      <div className="flex">
+      <div className="flex min-h-screen flex-col lg:flex-row">
         <Sidebar />
-        <section className="min-w-0 flex-1 p-6 sm:p-10">
-          <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
+        <section className="min-w-0 flex-1 p-4 sm:p-6 lg:p-10">
+          <header className="mb-6 flex flex-wrap items-center justify-between gap-4 sm:mb-8">
             <div>
-              <h2 className="text-4xl font-bold text-slate-950 dark:text-white">Welcome Back 👋</h2>
-              <p className="mt-2 text-gray-600 dark:text-slate-300">University Girls Hostel Dashboard</p>
+              <h2 className="text-2xl font-bold text-slate-950 sm:text-4xl dark:text-white">Welcome Back 👋</h2>
+              <p className="mt-1 text-sm text-gray-600 sm:mt-2 sm:text-base dark:text-slate-300">University Girls Hostel Dashboard</p>
             </div>
-            <ProfileDropdown />
+            <div className="hidden lg:block">
+              <ProfileDropdown />
+            </div>
           </header>
 
           {error && <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 dark:border-red-900 dark:bg-red-950/60 dark:text-red-200">{error}</div>}
 
           {!canAccessDashboard ? (
-            <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-sm sm:p-10 dark:border-slate-800 dark:bg-slate-900">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400">
                 <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="12" cy="12" r="10" />
                   <path d="m4.93 4.93 14.14 14.14" />
                 </svg>
               </div>
-              <h3 className="mt-4 text-2xl font-bold text-slate-900 dark:text-white">Dashboard Access Restricted</h3>
+              <h3 className="mt-4 text-xl font-bold text-slate-900 sm:text-2xl dark:text-white">Dashboard Access Restricted</h3>
               <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                 Your staff account does not have permission to view the main hostel dashboard. Please select an authorized module from the sidebar navigation.
               </p>
@@ -130,7 +132,7 @@ export default function DashboardPage() {
             <>
               <DashboardStats data={data} />
 
-              <h3 className="mb-6 text-2xl font-semibold text-gray-800 dark:text-slate-100">Quick Actions</h3>
+              <h3 className="mb-4 text-xl font-semibold text-gray-800 sm:mb-6 sm:text-2xl dark:text-slate-100">Quick Actions</h3>
               <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
                 {quickActions.map((action) => (
                   <Link key={action.href} href={action.href} className="rounded-2xl bg-white p-6 text-slate-950 shadow-lg transition hover:-translate-y-1 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-blue-200 dark:bg-slate-800 dark:text-slate-100 dark:focus:ring-blue-800">

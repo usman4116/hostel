@@ -343,11 +343,11 @@ export default function ResidentMaintenancePage() {
   return (
     <main className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-6xl space-y-6">
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-indigo-600">
             University Girls Hostel Resident Portal
           </p>
-          <h1 className="mt-2 text-3xl font-bold">My Maintenance</h1>
+          <h1 className="mt-2 text-2xl font-bold sm:text-3xl">My Maintenance</h1>
           <p className="mt-1 text-sm text-slate-500">
             Submit a request for your current room and track its status.
           </p>
@@ -355,7 +355,7 @@ export default function ResidentMaintenancePage() {
             href="/resident-portal"
             className="mt-4 inline-flex text-sm font-semibold text-indigo-700"
           >
-            Back to portal
+            ← Back to portal
           </Link>
         </section>
 
@@ -371,7 +371,7 @@ export default function ResidentMaintenancePage() {
           </p>
         )}
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
           <h2 className="text-xl font-bold">New Maintenance Request</h2>
           {!hasActiveAdmission && !loading ? (
             <p className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
@@ -380,9 +380,9 @@ export default function ResidentMaintenancePage() {
           ) : (
           <form
             onSubmit={submit}
-            className="mt-5 grid gap-4 md:grid-cols-2"
+            className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2"
           >
-            <label>
+            <label className="min-w-0">
               <span className="mb-2 block text-sm font-semibold">Title *</span>
               <input
                 required
@@ -392,7 +392,7 @@ export default function ResidentMaintenancePage() {
                 disabled={saving}
               />
             </label>
-            <label>
+            <label className="min-w-0">
               <span className="mb-2 block text-sm font-semibold">Category</span>
               <select
                 value={category}
@@ -405,7 +405,7 @@ export default function ResidentMaintenancePage() {
                 )}
               </select>
             </label>
-            <label>
+            <label className="min-w-0">
               <span className="mb-2 block text-sm font-semibold">Priority</span>
               <select
                 value={priority}
@@ -420,7 +420,7 @@ export default function ResidentMaintenancePage() {
                 <option>High</option>
               </select>
             </label>
-            <label>
+            <label className="min-w-0">
               <span className="mb-2 block text-sm font-semibold">Issue Photo</span>
               <input
                 ref={fileInputRef}
@@ -431,7 +431,7 @@ export default function ResidentMaintenancePage() {
                 disabled={saving}
               />
             </label>
-            <label className="md:col-span-2">
+            <label className="min-w-0 md:col-span-2">
               <span className="mb-2 block text-sm font-semibold">Description *</span>
               <textarea
                 required
@@ -445,7 +445,7 @@ export default function ResidentMaintenancePage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               >
                 {saving ? "Submitting..." : "Submit Request"}
               </button>

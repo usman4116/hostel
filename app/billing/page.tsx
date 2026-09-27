@@ -286,6 +286,8 @@ function BillingContent() {
   const [generating, setGenerating] = useState(false);
   const [approvingIds, setApprovingIds] = useState<string[]>([]);
   const [selectedForApproval, setSelectedForApproval] = useState<string[]>([]);
+  const [billEmailStatus, setBillEmailStatus] = useState<Record<string, string>>({});
+  const [sendingEmailBillId, setSendingEmailBillId] = useState<string | null>(null);
   const editRequestId = useRef(0);
   const toastId = useRef(0);
 
@@ -304,6 +306,34 @@ function BillingContent() {
 
   const dismissToast = useCallback((id: number) => {
     setToasts((current) => current.filter((item) => item.id !== id));
+  }, []);
+
+  const loadBillEmailStatuses = useCallback(async () => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) return;
+      const response = await fetch("/api/notifications/events?eventType=bill_generated", {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      if (!response.ok) return;
+      const payload = (await response.json().catch(() => null)) as {
+        logs?: Array<{ entity_id?: string; email_status?: string | null }>;
+      } | null;
+      const map: Record<string, string> = {};
+      for (const row of payload?.logs ?? []) {
+        const entityId = text(row.entity_id);
+        const status = text(row.email_status).toLowerCase();
+        if (!entityId) continue;
+        if (!map[entityId] || status === "sent") {
+          map[entityId] = status || "not_sent";
+        }
+      }
+      setBillEmailStatus(map);
+    } catch {
+      // Ignore non-fatal email status lookup errors
+    }
   }, []);
 
   const refresh = useCallback(async () => {
@@ -388,10 +418,11 @@ function BillingContent() {
       setMeterConfig(loadedMeterConfig);
       setPayments((paymentsResult.data ?? []) as GenericRow[]);
       setReceipts((receiptsResult.data ?? []) as GenericRow[]);
+      await loadBillEmailStatuses();
     }
 
     setLoading(false);
-  }, []);
+  }, [loadBillEmailStatuses]);
 
   useEffect(() => {
     setTypeFilter(searchParams.get("type") || "Rent");
@@ -1406,12 +1437,16 @@ function BillingContent() {
       }
       const notificationResult = editingId
         ? null
-        : await requestEventNotification("bill_generated", savedBillId);
+        : await requestEventNotification("bill_generated", savedBillId, { channels: ["email"] });
       setMessage(
         editingId
           ? "Bill updated successfully."
           : `Bill generated successfully.${
-              notificationResult ? notificationWarning(notificationResult) : ""
+              notificationResult
+                ? notificationResult.delivered
+                  ? " Bill email sent to resident."
+                  : notificationWarning(notificationResult)
+                : ""
             }`,
       );
       setEditingId(null);
@@ -1423,6 +1458,26 @@ function BillingContent() {
     }
 
     setSaving(false);
+  }
+
+  async function sendBillEmail(bill: Bill) {
+    if (sendingEmailBillId) return;
+    setSendingEmailBillId(bill.id);
+    setMessage("");
+    setError("");
+    try {
+      const result = await requestEventNotification("bill_generated", bill.id, {
+        channels: ["email"],
+      });
+      await loadBillEmailStatuses();
+      if (result.delivered) {
+        setMessage(`Bill ${bill.bill_number} email sent successfully via Resend.`);
+      } else {
+        setError(`Bill ${bill.bill_number} email could not be delivered. Check resident email and Resend sender domain.`);
+      }
+    } finally {
+      setSendingEmailBillId(null);
+    }
   }
 
   async function cancelBill(bill: Bill) {
@@ -1677,7 +1732,7 @@ function BillingContent() {
                 {String(verifyingReceipt.receipt_url).toLowerCase().includes(".pdf") ? (
                   <iframe
                     src={String(verifyingReceipt.receipt_url)}
-                    className="h-[600px] w-full rounded-lg"
+                    className="h-[55vh] w-full rounded-lg sm:h-[600px]"
                   />
                 ) : (
                   /* eslint-disable-next-line @next/next/no-img-element */
@@ -1715,7 +1770,7 @@ function BillingContent() {
 
 
         {recordingPaymentBill && (
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
             <div className="mb-6 flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-xl font-bold text-slate-900">Record Payment</h2>
@@ -1793,7 +1848,7 @@ function BillingContent() {
                 />
               </Field>
 
-              <div className="flex items-center gap-3 md:col-span-2">
+              <div className="flex flex-wrap items-center gap-3 md:col-span-2">
                 <button
                   type="submit"
                   disabled={saving}
@@ -2066,7 +2121,7 @@ function BillingContent() {
 
                     {form.resident_id && isElectricityEnabled && (
                       <Field label="Electricity Meter Status" wide>
-                        <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300">
+                        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300">
                           <span>
                             {findRecordedMeterReading(form.admission_id, form.resident_id, form.billing_month) ? (
                               <>✓ <strong>Meter reading auto-loaded</strong> from Meter Reading module for {form.billing_month} ({computed.units.toFixed(2)} units = {money(computed.acAmount)}).</>
@@ -2074,7 +2129,7 @@ function BillingContent() {
                               <>⚡ Electricity billing enabled for this student. Any reading entered below will be recorded.</>
                             )}
                           </span>
-                          <Link href="/meter-reading" className="ml-2 font-bold underline text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
+                          <Link href="/meter-reading" className="font-bold underline text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
                             Meter Module →
                           </Link>
                         </div>
@@ -2256,7 +2311,7 @@ function BillingContent() {
                 />
               </section>
 
-              <div className="flex justify-end gap-3">
+              <div className="flex flex-wrap justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
@@ -2558,6 +2613,7 @@ function BillingContent() {
                     "Balance",
                     "Due Date",
                     "Status",
+                    "Email",
                     "Actions",
                   ].map((heading) => (
                     <th
@@ -2573,7 +2629,7 @@ function BillingContent() {
               <tbody className="divide-y divide-slate-100 bg-white">
                 {loading ? (
                   <tr>
-                    <td colSpan={9} className="px-5 py-12">
+                    <td colSpan={10} className="px-5 py-12">
                       <div className="flex items-center justify-center gap-3 text-sm text-slate-500">
                         <Spinner />
                         Loading bills...
@@ -2582,7 +2638,7 @@ function BillingContent() {
                   </tr>
                 ) : filteredBills.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-5 py-16">
+                    <td colSpan={10} className="px-5 py-16">
                       <div className="flex flex-col items-center gap-2 text-center">
                         <span
                           aria-hidden
@@ -2612,6 +2668,7 @@ function BillingContent() {
                     const receipt = receipts.find(
                       (r) => text(r.bill_id) === bill.id
                     );
+                    const isEmailSent = billEmailStatus[bill.id] === "sent";
 
                     return (
                       <tr
@@ -2671,7 +2728,29 @@ function BillingContent() {
                         </td>
 
                         <td className="px-5 py-4">
+                          <span
+                            className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ${
+                              isEmailSent
+                                ? "bg-emerald-100 text-emerald-700"
+                                : "bg-amber-100 text-amber-800"
+                            }`}
+                          >
+                            {isEmailSent ? "Email Sent" : "Not Sent"}
+                          </span>
+                        </td>
+
+                        <td className="px-5 py-4">
                           <div className="flex flex-wrap gap-2">
+                            {!isEmailSent && bill.bill_status !== "Cancelled" && (
+                              <button
+                                type="button"
+                                onClick={() => void sendBillEmail(bill)}
+                                disabled={sendingEmailBillId === bill.id}
+                                className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 disabled:opacity-50"
+                              >
+                                {sendingEmailBillId === bill.id ? "Sending..." : "Send Email"}
+                              </button>
+                            )}
                             {receipt && receipt.status === "Pending Verification" && (
                               <button
                                 type="button"

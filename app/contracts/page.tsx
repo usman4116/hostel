@@ -867,7 +867,7 @@ export default function ContractsPage() {
                 Security deposit is refundable only when notice is served at least 30 days before leaving.
               </div>
 
-              <div className="flex justify-end gap-3">
+              <div className="flex flex-wrap justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
@@ -1157,7 +1157,7 @@ export default function ContractsPage() {
                 </div>
 
                 <div>
-                  <div className="mb-2 flex items-center justify-between">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                     <label className="text-sm font-semibold text-slate-700">
                       Standard Terms, Rules & Regulations *
                     </label>

@@ -127,15 +127,15 @@ export default function NoticesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
 
       <div className="mx-auto max-w-7xl">
 
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
 
           <div>
 
-            <h1 className="text-3xl font-bold">
+            <h1 className="text-2xl font-bold sm:text-3xl">
               Notices
             </h1>
 
@@ -148,7 +148,7 @@ export default function NoticesPage() {
 
           <Link
             href="/dashboard/notices/add"
-            className="rounded-lg bg-blue-600 px-5 py-3 text-white font-medium"
+            className="rounded-lg bg-blue-600 px-5 py-3 text-sm font-medium text-white"
           >
             + Add Notice
           </Link>
@@ -160,7 +160,7 @@ export default function NoticesPage() {
           </div>
         )}
 
-        <div className="mb-6 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
 
@@ -219,7 +219,7 @@ export default function NoticesPage() {
 
           </div>
 
-          <div className="mt-4 flex items-center justify-between">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
 
             <p className="text-sm text-gray-600">
               Showing {filteredNotices.length} of {notices.length} notices

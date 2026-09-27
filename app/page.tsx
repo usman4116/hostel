@@ -2,9 +2,9 @@ import Link from "next/link";
 
 export default function HomePage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-lg">
-        <h1 className="text-5xl font-bold text-blue-600">
+    <main className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
+      <div className="w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-lg sm:p-10">
+        <h1 className="text-3xl font-bold text-blue-600 sm:text-5xl">
           University Girls Hostel
         </h1>
 

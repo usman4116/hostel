@@ -83,7 +83,7 @@ export default function AdminChangePasswordPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-100 p-4">
-      <section className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl">
+      <section className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl sm:p-8">
         <h1 className="text-2xl font-bold text-slate-900">Set your admin password</h1>
         <p className="mt-2 text-sm text-slate-600">Choose a private password for your University Girls Hostel Staff Portal account.</p>
         {error && <p role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}

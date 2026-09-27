@@ -129,8 +129,8 @@ export default function ResidentInspectionReportPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-50 p-8 text-center text-slate-600">
-        <div className="mx-auto max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+      <main className="min-h-screen bg-slate-50 p-4 text-center text-slate-600 sm:p-8">
+        <div className="mx-auto max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
           <p className="font-semibold">Loading inspection report...</p>
         </div>
       </main>
@@ -139,8 +139,8 @@ export default function ResidentInspectionReportPage() {
 
   if (!inspection) {
     return (
-      <main className="min-h-screen bg-slate-50 p-6">
-        <section className="mx-auto max-w-3xl rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+      <main className="min-h-screen bg-slate-50 p-4 sm:p-6">
+        <section className="mx-auto max-w-3xl rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
           <h1 className="text-2xl font-bold text-slate-900">Inspection Report</h1>
           <p className="mt-4 rounded-2xl bg-red-50 p-4 text-sm text-red-700">{error || "Inspection report not found."}</p>
           <Link
@@ -164,20 +164,20 @@ export default function ResidentInspectionReportPage() {
     <main className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-5xl space-y-6">
         {/* Printable Header */}
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-indigo-600">
                 University Girls Hostel
               </p>
-              <h1 className="mt-1 text-3xl font-bold text-slate-900">
+              <h1 className="mt-1 text-2xl font-bold text-slate-900 sm:text-3xl">
                 {inspection.inspection_number || "Room Inspection Report"}
               </h1>
               <p className="mt-1 text-xs text-slate-500">
                 Official room condition and inspection record.
               </p>
             </div>
-            <div className="flex gap-2 print:hidden">
+            <div className="flex flex-wrap gap-2 print:hidden">
               <button
                 type="button"
                 onClick={() => window.print()}
@@ -196,7 +196,7 @@ export default function ResidentInspectionReportPage() {
         </section>
 
         {/* Key Info Grid */}
-        <section className="grid gap-3 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
+        <section className="grid gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2 sm:p-6 lg:grid-cols-4">
           <Info label="Resident" value={text(resident?.full_name) || "—"} />
           <Info label="Room" value={room ? `Room ${text(room.room_number)}` : "—"} />
           <Info label="Bed" value={bed ? normalizeBedLabel(text(bed.bed_number)) : "—"} />
@@ -208,7 +208,7 @@ export default function ResidentInspectionReportPage() {
         </section>
 
         {/* Condition Ratings */}
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
           <h2 className="text-base font-bold uppercase tracking-wider text-slate-700 mb-4">
             Room Condition Assessment
           </h2>
@@ -224,7 +224,7 @@ export default function ResidentInspectionReportPage() {
 
         {/* Damage & Notes */}
         <section className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
             <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700">Damage Assessment</h3>
             <p
               className={`mt-3 rounded-2xl p-4 text-sm ${
@@ -236,14 +236,14 @@ export default function ResidentInspectionReportPage() {
                 : "No damages were recorded during this inspection."}
             </p>
             {inspection.damage_found && (
-              <div className="mt-4 flex gap-4 text-xs font-bold text-slate-700">
+              <div className="mt-4 flex flex-wrap gap-3 text-xs font-bold text-slate-700">
                 <span>Estimated Cost: {money(inspection.estimated_damage_cost)}</span>
                 <span>Actual Cost: {money(inspection.actual_damage_cost)}</span>
               </div>
             )}
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
             <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700">Inspector Notes</h3>
             <p className="mt-3 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700 border border-slate-100 whitespace-pre-wrap">
               {inspection.notes || "No additional notes recorded for this inspection."}

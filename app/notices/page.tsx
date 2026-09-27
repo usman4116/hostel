@@ -38,18 +38,18 @@ export default function NoticesPage() {
   const visible = notices.filter(notice => (audience === "All" || notice.audience === audience) &&
     (status === "All" || (status === "Current" ? notice.status !== "Archived" : notice.status === status)) &&
     (notice.title + " " + notice.description).toLowerCase().includes(search.trim().toLowerCase()));
-  return <main className="min-h-screen bg-slate-50 p-6"><div className="mx-auto max-w-6xl space-y-6">
-    <header className="flex justify-between items-center"><h1 className="text-3xl font-bold">Notices</h1><Link className="rounded-xl bg-indigo-600 px-5 py-3 text-white" href="/dashboard/notices/add">Add Notice</Link></header>
+  return <main className="min-h-screen bg-slate-50 p-4 sm:p-6"><div className="mx-auto max-w-6xl space-y-6">
+    <header className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-bold sm:text-3xl">Notices</h1><Link className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white" href="/dashboard/notices/add">Add Notice</Link></header>
     {error && <p role="alert" className="text-red-700">{error}</p>}
-    <div className="flex flex-wrap gap-4">
-      <input aria-label="Search notices" className="rounded border p-3" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search notices" />
-      <select aria-label="Audience" className="rounded border p-3" value={audience} onChange={event => setAudience(event.target.value)}>{["All", ...NOTICE_AUDIENCES].map(value => <option key={value}>{value}</option>)}</select>
-      <select aria-label="Status" className="rounded border p-3" value={status} onChange={event => setStatus(event.target.value)}>{["Current", "All", ...NOTICE_STATUSES].map(value => <option key={value}>{value}</option>)}</select>
+    <div className="flex flex-wrap gap-3 sm:gap-4">
+      <input aria-label="Search notices" className="w-full rounded border p-3 sm:w-auto" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search notices" />
+      <select aria-label="Audience" className="w-full rounded border p-3 sm:w-auto" value={audience} onChange={event => setAudience(event.target.value)}>{["All", ...NOTICE_AUDIENCES].map(value => <option key={value}>{value}</option>)}</select>
+      <select aria-label="Status" className="w-full rounded border p-3 sm:w-auto" value={status} onChange={event => setStatus(event.target.value)}>{["Current", "All", ...NOTICE_STATUSES].map(value => <option key={value}>{value}</option>)}</select>
     </div>
-    {loading ? <p>Loading notices...</p> : visible.length === 0 ? <p>No notices found.</p> : visible.map(notice => <article key={String(notice.id)} className="rounded-2xl border bg-white p-6">
+    {loading ? <p>Loading notices...</p> : visible.length === 0 ? <p>No notices found.</p> : visible.map(notice => <article key={String(notice.id)} className="rounded-2xl border bg-white p-4 sm:p-6">
       <h2 className="text-xl font-bold">{notice.title}</h2><p className="my-2 text-sm">{notice.status} ? {notice.audience}{notice.pinned ? " ? Pinned" : ""}{notice.show_as_popup ? " ? Popup" : ""}</p>
       <p className="whitespace-pre-wrap">{notice.description}</p><p className="my-3 text-sm">Published: {notice.publish_date || "Not scheduled"} ? Expires: {notice.expiry_date || "No expiry"}</p>
-      <div className="flex gap-4"><Link className="text-indigo-700 underline" href={"/notices/" + bigintId(notice.id)}>View</Link>
+      <div className="flex flex-wrap gap-4"><Link className="text-indigo-700 underline" href={"/notices/" + bigintId(notice.id)}>View</Link>
       {notice.status !== "Archived" && <><Link className="text-indigo-700 underline" href={"/dashboard/notices/edit/" + bigintId(notice.id)}>Edit</Link>
         <button onClick={() => void changeStatus(notice, notice.status === "Published" ? "Draft" : "Published")}>{notice.status === "Published" ? "Unpublish" : "Publish"}</button>
         <button onClick={() => void changeStatus(notice, "Archived")}>Archive</button></>}

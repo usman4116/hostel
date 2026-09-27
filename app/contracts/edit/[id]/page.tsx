@@ -209,11 +209,11 @@ export default function EditContractPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="mx-auto max-w-4xl rounded-xl bg-white p-6 shadow">
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
+      <div className="mx-auto max-w-4xl rounded-xl bg-white p-4 shadow sm:p-6">
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-indigo-600">University Girls Hostel</p>
         <h1 className="mt-2 text-2xl font-bold text-gray-800">Edit Contract</h1>
-        <p className="mt-1 text-sm text-gray-500">Update contract ID: {contractId}</p>
+        <p className="mt-1 break-all text-sm text-gray-500">Update contract ID: {contractId}</p>
         <p className="mt-2 text-sm text-amber-700">Admission terms, resident identity, signature state, and activation status are locked. Activate only from Admissions after all readiness checks pass.</p>
 
         {message && <div className="my-5 rounded-lg bg-red-50 p-3 text-sm text-red-700">{message}</div>}
@@ -268,7 +268,7 @@ export default function EditContractPage() {
             <textarea rows={4} value={notes} onChange={(event) => setNotes(event.target.value)} disabled={saving} className="w-full rounded-lg border border-gray-300 px-3 py-2" />
           </label>
 
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <button type="submit" disabled={saving} className="rounded-lg bg-blue-600 px-5 py-2 font-medium text-white disabled:opacity-60">{saving ? "Updating..." : "Update Contract"}</button>
             <Link href={`/contracts/${contractId}`} className="rounded-lg bg-gray-200 px-5 py-2 font-medium text-gray-700">Cancel</Link>
           </div>

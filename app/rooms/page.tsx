@@ -185,8 +185,16 @@ export default function RoomsPage() {
         floor_number: r.floor_number ?? null,
         description: r.description ?? null,
         total_beds: r.total_beds ?? 1,
-      }));
-      setRooms(mappedRooms as Room[]);
+      })) as Room[];
+      mappedRooms.sort((a, b) => {
+        const floorDiff = (a.floor_number ?? 999) - (b.floor_number ?? 999);
+        if (floorDiff !== 0) return floorDiff;
+        return a.room_number.localeCompare(b.room_number, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        });
+      });
+      setRooms(mappedRooms);
     }
 
     if (bedResult.error || admissionResult.error) {
@@ -690,6 +698,10 @@ export default function RoomsPage() {
                     }
                     className={inputClass}
                   >
+                    <option value="2 Sharing">2 Sharing</option>
+                    <option value="3 Sharing">3 Sharing</option>
+                    <option value="Single Economy">Single Economy</option>
+                    <option value="Single Deluxe">Single Deluxe</option>
                     <option value="Shared">Shared</option>
                     <option value="Single">Single</option>
                     <option value="Double">Double</option>
@@ -926,11 +938,23 @@ export default function RoomsPage() {
                         <tr className="hover:bg-slate-50/70">
                           <td className="whitespace-nowrap px-5 py-4">
                             <p className="font-semibold text-slate-900">
-                              Room {room.room_number}
+                              {/^\d+$/.test(room.room_number)
+                                ? `Room ${room.room_number}`
+                                : room.room_number}
                             </p>
                             <p className="mt-1 text-xs text-slate-500">
-                              {room.block_name || "No block"} · Floor{" "}
-                              {room.floor_number ?? "—"}
+                              {room.block_name || "No block"} ·{" "}
+                              {room.floor_number === 0
+                                ? "Ground Floor"
+                                : room.floor_number === 1
+                                ? "1st Floor"
+                                : room.floor_number === 2
+                                ? "2nd Floor"
+                                : room.floor_number === 3
+                                ? "3rd Floor"
+                                : room.floor_number !== null
+                                ? `Floor ${room.floor_number}`
+                                : "No floor"}
                             </p>
                           </td>
 

@@ -241,7 +241,7 @@ export default function AddInventoryPage() {
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-6">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
               Add Inventory Item
@@ -274,7 +274,7 @@ export default function AddInventoryPage() {
 
         <form
           onSubmit={handleSubmit}
-          className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
+          className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6"
         >
           <h2 className="mb-5 text-lg font-semibold text-gray-900">
             Basic Information

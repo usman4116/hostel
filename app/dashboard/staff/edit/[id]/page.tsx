@@ -147,7 +147,7 @@ export default function EditStaffPage() {
 
   if (pageLoading) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <p className="text-center text-gray-500">
           Loading staff details...
         </p>
@@ -156,9 +156,9 @@ export default function EditStaffPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow">
-        <h1 className="text-3xl font-bold mb-6">Edit Staff</h1>
+    <div className="p-4 sm:p-6">
+      <div className="max-w-3xl mx-auto bg-white p-4 sm:p-6 rounded-lg shadow">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-6">Edit Staff</h1>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -336,7 +336,7 @@ export default function EditStaffPage() {
             />
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <button
               type="submit"
               disabled={saving}

@@ -32,13 +32,13 @@ export default function SecuritySettingsPage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 p-6">
+    <main className="min-h-screen bg-slate-50 p-4 sm:p-6">
 
       <div className="mx-auto max-w-5xl space-y-6">
 
-        <div className="rounded-3xl bg-gradient-to-r from-red-600 via-orange-600 to-amber-500 p-8 text-white shadow-xl">
+        <div className="rounded-3xl bg-gradient-to-r from-red-600 via-orange-600 to-amber-500 p-5 sm:p-8 text-white shadow-xl">
 
-          <h1 className="text-3xl font-bold">
+          <h1 className="text-2xl sm:text-3xl font-bold">
             Security Deposit Settings
           </h1>
 
@@ -51,7 +51,7 @@ export default function SecuritySettingsPage() {
 
         <form
           onSubmit={handleSubmit}
-          className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm"
+          className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-8 shadow-sm"
         >
 
           <div className="grid gap-6 md:grid-cols-2">
@@ -337,7 +337,7 @@ export default function SecuritySettingsPage() {
 
           </div>
 
-          <div className="mt-10 flex items-center justify-end gap-4">
+          <div className="mt-10 flex flex-wrap items-center justify-end gap-4">
 
             <button
               type="button"

@@ -231,7 +231,7 @@ export default function ResidentInspectionsPage() {
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span
                         className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold border ${statusBadgeClass(
                           item.status
@@ -336,15 +336,15 @@ export default function ResidentInspectionsPage() {
 
         {/* Detailed Inspection Report Modal */}
         {selectedInspection && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm overflow-y-auto">
-            <div className="w-full max-w-3xl rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-2xl my-8">
+          <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/60 p-3 backdrop-blur-sm sm:items-center sm:p-4">
+            <div className="my-4 w-full max-w-3xl rounded-3xl border border-slate-200 bg-white p-4 shadow-2xl sm:my-8 sm:p-8">
               {/* Modal Header */}
-              <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-4">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">
                     Official Inspection Report
                   </p>
-                  <h2 className="text-2xl font-bold text-slate-900 mt-0.5">
+                  <h2 className="mt-0.5 text-xl font-bold text-slate-900 sm:text-2xl">
                     {selectedInspection.inspection_number || "Room Inspection Report"}
                   </h2>
                 </div>
@@ -352,14 +352,14 @@ export default function ResidentInspectionsPage() {
                   <button
                     type="button"
                     onClick={() => window.print()}
-                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm"
+                    className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 sm:px-4"
                   >
                     Print Report
                   </button>
                   <button
                     type="button"
                     onClick={() => setSelectedInspection(null)}
-                    className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 transition"
+                    className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100"
                   >
                     ✕
                   </button>
@@ -425,7 +425,7 @@ export default function ResidentInspectionsPage() {
                         <p className="mt-1.5 text-xs text-red-700 leading-relaxed">
                           {selectedInspection.damage_description || "No specific damage description recorded."}
                         </p>
-                        <div className="mt-3 flex gap-4 text-xs font-bold">
+                        <div className="mt-3 flex flex-wrap gap-3 text-xs font-bold">
                           <span>Estimated Cost: {money(selectedInspection.estimated_damage_cost)}</span>
                           <span>Actual Cost: {money(selectedInspection.actual_damage_cost)}</span>
                         </div>
@@ -473,7 +473,7 @@ export default function ResidentInspectionsPage() {
               </div>
 
               {/* Modal Footer */}
-              <div className="mt-8 flex items-center justify-between border-t border-slate-200 pt-4">
+              <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4">
                 <Link
                   href={`/resident-portal/inspections/${selectedInspection.id}`}
                   className="text-xs font-bold text-indigo-600 hover:underline"
@@ -484,7 +484,7 @@ export default function ResidentInspectionsPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedInspection(null)}
-                  className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white hover:bg-slate-800 transition"
+                  className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800"
                 >
                   Close Report
                 </button>

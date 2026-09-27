@@ -185,8 +185,16 @@ export default function RoomsPage() {
         floor_number: r.floor_number ?? null,
         description: r.description ?? null,
         total_beds: r.total_beds ?? 1,
-      }));
-      setRooms(mappedRooms as Room[]);
+      })) as Room[];
+      mappedRooms.sort((a, b) => {
+        const floorDiff = (a.floor_number ?? 999) - (b.floor_number ?? 999);
+        if (floorDiff !== 0) return floorDiff;
+        return a.room_number.localeCompare(b.room_number, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        });
+      });
+      setRooms(mappedRooms);
     }
 
     const occupantMap = new Map<string, BedOccupantInfo>();
@@ -731,6 +739,10 @@ export default function RoomsPage() {
                     }
                     className={inputClass}
                   >
+                    <option value="2 Sharing">2 Sharing</option>
+                    <option value="3 Sharing">3 Sharing</option>
+                    <option value="Single Economy">Single Economy</option>
+                    <option value="Single Deluxe">Single Deluxe</option>
                     <option value="Single">Single</option>
                     <option value="Shared">Shared</option>
                     <option value="Dormitory">Dormitory</option>
@@ -793,7 +805,7 @@ export default function RoomsPage() {
                 </Field>
               </div>
 
-              <div className="flex justify-end gap-3">
+              <div className="flex flex-wrap justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setShowRoomForm(false)}
@@ -818,7 +830,7 @@ export default function RoomsPage() {
         )}
 
         {showBedForm && (
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
             <div className="mb-6 flex items-center justify-between gap-4">
               <h2 className="text-xl font-bold text-slate-900">
                 Add Bed
@@ -854,7 +866,10 @@ export default function RoomsPage() {
                         ).length;
                         return (
                           <option key={room.id} value={room.id}>
-                            Room {room.room_number} ({roomActiveBeds} / {room.total_beds} beds)
+                            {/^\d+$/.test(room.room_number)
+                              ? `Room ${room.room_number}`
+                              : room.room_number}{" "}
+                            ({roomActiveBeds} / {room.total_beds} beds)
                           </option>
                         );
                       })}
@@ -919,7 +934,7 @@ export default function RoomsPage() {
                 </Field>
               </div>
 
-              <div className="flex justify-end gap-3">
+              <div className="flex flex-wrap justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setShowBedForm(false)}
@@ -1019,7 +1034,9 @@ export default function RoomsPage() {
                       <div>
                         <div className="flex flex-wrap items-center gap-3">
                           <h2 className="text-2xl font-bold text-slate-900">
-                            Room {room.room_number}
+                            {/^\d+$/.test(room.room_number)
+                              ? `Room ${room.room_number}`
+                              : room.room_number}
                           </h2>
                           <span
                             className={`rounded-full px-3 py-1 text-xs font-bold ${roomStatusClass(
@@ -1032,8 +1049,18 @@ export default function RoomsPage() {
 
                         <p className="mt-2 text-sm text-slate-500">
                           {room.block_name || "No building"} ·{" "}
-                          {room.floor_number || "No floor"} ·{" "}
-                          {room.room_type || "No type"}
+                          {room.floor_number === 0
+                            ? "Ground Floor"
+                            : room.floor_number === 1
+                            ? "1st Floor"
+                            : room.floor_number === 2
+                            ? "2nd Floor"
+                            : room.floor_number === 3
+                            ? "3rd Floor"
+                            : room.floor_number !== null
+                            ? `Floor ${room.floor_number}`
+                            : "No floor"}{" "}
+                          · {room.room_type || "No type"}
                         </p>
                       </div>
 

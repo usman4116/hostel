@@ -325,7 +325,7 @@ export default function AdminProfilePage() {
                       </div>
                     </div>
 
-                    <div className="flex justify-end gap-3">
+                    <div className="flex flex-wrap justify-end gap-3">
                       <button
                         type="button"
                         onClick={cancelEdit}

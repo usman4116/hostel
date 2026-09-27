@@ -27,12 +27,10 @@ type PortalTab =
   | "Profile"
   | "Room"
   | "Contract"
-  | "Bills"
   | "Payments"
   | "Notices"
   | "Inspections"
-  | "Maintenance"
-  | "Security Deposit";
+  | "Maintenance";
 
 function text(value: unknown) {
   return value == null ? "" : String(value);
@@ -228,8 +226,8 @@ export default function ResidentPortalPage() {
   const contractSigned = Boolean(firstText(contract, ["resident_signature_url"]));
   const depositVerified = isDepositVerified(firstText(admission, ["deposit_status"]));
   const portalTabs: PortalTab[] = hasActiveAdmission
-    ? ["Overview", "Profile", "Room", "Contract", "Security Deposit", "Bills", "Payments", "Notices", "Inspections", "Maintenance"]
-    : ["Overview", "Profile", "Contract", "Security Deposit", "Payments", "Notices"];
+    ? ["Overview", "Profile", "Room", "Contract", "Payments", "Notices", "Inspections", "Maintenance"]
+    : ["Overview", "Profile", "Contract", "Payments", "Notices"];
 
   const verifiedByBill = useMemo(() => {
     const totals = new Map<string, number>();
@@ -318,17 +316,17 @@ export default function ResidentPortalPage() {
     <main className="min-h-screen bg-slate-50">
       <ResidentNoticePopup notices={notices} residentId={text(resident.id)} />
       <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-5 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-4 flex-1">
-            <img src="/logo.jpg" alt="Logo" className="w-14 h-14 rounded-full object-cover shadow-sm" />
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-indigo-600">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-4 sm:gap-4 sm:px-6 sm:py-5 lg:px-8">
+          <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
+            <img src="/logo.jpg" alt="Logo" className="h-11 w-11 shrink-0 rounded-full object-cover shadow-sm sm:h-14 sm:w-14" />
+            <div className="min-w-0">
+              <p className="truncate text-xs font-semibold uppercase tracking-[0.14em] text-indigo-600 sm:text-sm sm:tracking-[0.2em]">
                 University Girls Hostel
               </p>
-              <h1 className="mt-1 text-2xl font-bold text-slate-900">
+              <h1 className="mt-0.5 truncate text-xl font-bold text-slate-900 sm:mt-1 sm:text-2xl">
                 Resident Portal
               </h1>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-0.5 truncate text-xs text-slate-500 sm:mt-1 sm:text-sm">
                 Welcome, {residentName(resident)}
               </p>
             </div>
@@ -337,24 +335,24 @@ export default function ResidentPortalPage() {
           <button
             type="button"
             onClick={logout}
-            className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700"
+            className="shrink-0 rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 sm:px-4 sm:text-sm"
           >
             Logout
           </button>
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[240px_1fr] lg:px-8">
-        <aside className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-          <nav className="space-y-2">
+      <div className="mx-auto grid max-w-7xl gap-4 px-4 py-4 sm:gap-6 sm:px-6 sm:py-6 lg:grid-cols-[240px_1fr] lg:px-8">
+        <aside className="min-w-0 rounded-2xl border border-slate-200 bg-white p-2.5 shadow-sm sm:rounded-3xl sm:p-4 lg:sticky lg:top-6 lg:self-start">
+          <nav className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:space-y-1.5 lg:overflow-visible lg:pb-0" aria-label="Resident portal navigation">
             {portalTabs.map((tab) => (
               <button
                 key={tab}
                 type="button"
                 onClick={() => setActiveTab(tab)}
-                className={`w-full rounded-xl px-4 py-3 text-left text-sm font-semibold ${
+                className={`shrink-0 whitespace-nowrap rounded-xl px-3.5 py-2.5 text-left text-sm font-semibold transition lg:w-full lg:px-4 lg:py-3 ${
                   activeTab === tab
-                    ? "bg-indigo-600 text-white"
+                    ? "bg-indigo-600 text-white shadow-xs"
                     : "text-slate-700 hover:bg-slate-100"
                 }`}
               >
@@ -364,7 +362,7 @@ export default function ResidentPortalPage() {
           </nav>
         </aside>
 
-        <section className="space-y-6">
+        <section className="min-w-0 space-y-6">
           {(message || error) && (
             <div
               className={`rounded-2xl border px-4 py-3 text-sm font-medium ${
@@ -426,33 +424,6 @@ export default function ResidentPortalPage() {
                 />
               </Card>
             </>
-          )}
-
-          {activeTab === "Security Deposit" && (
-            <Card title="Security Deposit">
-              {bills.filter(b => b.bill_type === "Security Deposit").length === 0 ? (
-                <EmptyState text="No security deposit on record." />
-              ) : (
-                bills.filter(b => b.bill_type === "Security Deposit").map(dep => (
-                  <div key={text(dep.id)} className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4 mb-4 last:mb-0">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-semibold text-slate-900">Security Deposit Bill ({text(dep.bill_number)})</p>
-                        <p className="text-sm text-slate-600 mt-1">Total: Rs {money(dep.total_amount)} | Balance: Rs {money(dep.balance_amount)}</p>
-                        <p className="text-sm font-medium mt-1">
-                          Status: <span className={dep.bill_status === "Paid" ? "text-emerald-600" : "text-amber-600"}>{text(dep.bill_status)}</span>
-                        </p>
-                      </div>
-                      {dep.bill_status !== "Paid" && (
-                        <Link href="/resident-portal/payments" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">
-                          Submit Proof
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </Card>
           )}
 
           {activeTab === "Profile" && (
@@ -520,60 +491,85 @@ export default function ResidentPortalPage() {
               )}
               <Link
                 href="/resident-portal/contract"
-                className="mt-5 inline-flex rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white"
+                className="mt-5 inline-flex w-full justify-center rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white sm:w-auto"
               >
                 Review and Sign Contract
               </Link>
             </Card>
           )}
 
-          {activeTab === "Bills" && (
-            <Card title="My Bills">
-              <DataTable
-                headers={["Bill No.", "Month", "Total", "Paid", "Balance", "Due Date", "Status"]}
-                rows={bills.map((bill) => [
-                  firstText(bill, ["bill_number"]) || "—",
-                  firstText(bill, ["billing_month"]).slice(0, 7) || "—",
-                  money(bill.total_amount),
-                  money(verifiedByBill.get(text(bill.id)) ?? 0),
-                  money(
-                    Math.max(
-                      Number(bill.total_amount || 0) -
-                        (verifiedByBill.get(text(bill.id)) ?? 0),
-                      0
-                    )
-                  ),
-                  firstText(bill, ["due_date"]).slice(0, 10) || "—",
-                  firstText(bill, ["bill_status"]) || "Pending",
-                ])}
-              />
-
-              {!isReadOnlyView && (
-                <div className="mt-6 flex flex-wrap gap-3 rounded-2xl border border-slate-200 p-5">
-                  <Link href="/resident-portal/bills" className="rounded-xl border border-indigo-200 px-5 py-3 text-sm font-semibold text-indigo-700">
-                    Open My Bills
-                  </Link>
-                  <Link href="/resident-portal/payments" className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white">
-                    Upload Payment Receipt
-                  </Link>
-                </div>
-              )}
-            </Card>
-          )}
-
           {activeTab === "Payments" && (
-            <PaymentHistory
-              admission={admission}
-              room={room}
-              bed={bed}
-              bills={bills}
-              payments={payments}
-              receipts={receipts}
-              onViewFinancialSummary={() => {
-                setActiveTab("Overview");
-                window.setTimeout(() => document.getElementById("financial-summary")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
-              }}
-            />
+            <>
+              <Card title="Security Deposit">
+                {bills.filter(b => b.bill_type === "Security Deposit").length === 0 ? (
+                  <EmptyState text="No security deposit on record." />
+                ) : (
+                  bills.filter(b => b.bill_type === "Security Deposit").map(dep => (
+                    <div key={text(dep.id)} className="mb-4 rounded-xl border border-indigo-100 bg-indigo-50/50 p-4 last:mb-0">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="font-semibold text-slate-900">Security Deposit Bill ({text(dep.bill_number)})</p>
+                          <p className="mt-1 text-sm text-slate-600">Total: Rs {money(dep.total_amount)} | Balance: Rs {money(dep.balance_amount)}</p>
+                          <p className="mt-1 text-sm font-medium">
+                            Status: <span className={dep.bill_status === "Paid" ? "text-emerald-600" : "text-amber-600"}>{text(dep.bill_status)}</span>
+                          </p>
+                        </div>
+                        {dep.bill_status !== "Paid" && (
+                          <Link href="/resident-portal/payments" className="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 sm:shrink-0">
+                            Submit Proof
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </Card>
+
+              <Card title="My Bills">
+                <DataTable
+                  headers={["Bill No.", "Month", "Total", "Paid", "Balance", "Due Date", "Status"]}
+                  rows={bills.map((bill) => [
+                    firstText(bill, ["bill_number"]) || "—",
+                    firstText(bill, ["billing_month"]).slice(0, 7) || "—",
+                    money(bill.total_amount),
+                    money(verifiedByBill.get(text(bill.id)) ?? 0),
+                    money(
+                      Math.max(
+                        Number(bill.total_amount || 0) -
+                          (verifiedByBill.get(text(bill.id)) ?? 0),
+                        0
+                      )
+                    ),
+                    firstText(bill, ["due_date"]).slice(0, 10) || "—",
+                    firstText(bill, ["bill_status"]) || "Pending",
+                  ])}
+                />
+
+                {!isReadOnlyView && (
+                  <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-slate-200 p-4 sm:flex-row sm:flex-wrap sm:p-5">
+                    <Link href="/resident-portal/bills" className="rounded-xl border border-indigo-200 px-5 py-3 text-center text-sm font-semibold text-indigo-700">
+                      Open My Bills
+                    </Link>
+                    <Link href="/resident-portal/payments" className="rounded-xl bg-indigo-600 px-5 py-3 text-center text-sm font-semibold text-white">
+                      Upload Payment Receipt
+                    </Link>
+                  </div>
+                )}
+              </Card>
+
+              <PaymentHistory
+                admission={admission}
+                room={room}
+                bed={bed}
+                bills={bills}
+                payments={payments}
+                receipts={receipts}
+                onViewFinancialSummary={() => {
+                  setActiveTab("Overview");
+                  window.setTimeout(() => document.getElementById("financial-summary")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+                }}
+              />
+            </>
           )}
 
           {activeTab === "Notices" && (
@@ -583,7 +579,7 @@ export default function ResidentPortalPage() {
                   <EmptyState text="No notices available." />
                 ) : (
                   notices.map((notice) => (
-                    <article key={text(notice.id)} className="rounded-2xl border border-slate-200 p-5">
+                    <article key={text(notice.id)} className="rounded-2xl border border-slate-200 p-4 sm:p-5">
                       <div className="flex flex-wrap items-center gap-2">
                         {Boolean(notice.pinned) && <span>📌</span>}
 
@@ -626,7 +622,7 @@ export default function ResidentPortalPage() {
                 ])}
               />
               {!isReadOnlyView && (
-                <Link href="/resident-portal/inspections" className="mt-5 inline-flex rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white hover:bg-indigo-700 transition">
+                <Link href="/resident-portal/inspections" className="mt-5 inline-flex w-full justify-center rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 sm:w-auto">
                   View Full Inspection History
                 </Link>
               )}
@@ -647,7 +643,7 @@ export default function ResidentPortalPage() {
               />
 
               {!isReadOnlyView && (
-                <Link href="/resident-portal/maintenance" className="mt-5 inline-flex rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white">
+                <Link href="/resident-portal/maintenance" className="mt-5 inline-flex w-full justify-center rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white sm:w-auto">
                   Submit or View Maintenance Requests
                 </Link>
               )}
@@ -661,8 +657,8 @@ export default function ResidentPortalPage() {
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="mb-5 text-xl font-bold text-slate-900">{title}</h2>
+    <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-6">
+      <h2 className="mb-4 text-lg font-bold text-slate-900 sm:mb-5 sm:text-xl">{title}</h2>
       {children}
     </section>
   );
@@ -671,11 +667,11 @@ function Card({ title, children }: { title: string; children: ReactNode }) {
 
 function InfoGrid({ items }: { items: [string, string][] }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
       {items.map(([label, value]) => (
         <article key={label} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-          <p className="mt-2 font-semibold text-slate-900">{value}</p>
+          <p className="mt-2 break-words font-semibold text-slate-900">{value}</p>
         </article>
       ))}
     </div>

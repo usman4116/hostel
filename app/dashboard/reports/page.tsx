@@ -471,15 +471,15 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
 
       <div className="mx-auto max-w-7xl">
 
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
 
           <div>
 
-            <h1 className="text-3xl font-bold">
+            <h1 className="text-2xl sm:text-3xl font-bold">
               Reports
             </h1>
 
@@ -505,7 +505,7 @@ export default function ReportsPage() {
           </div>
         )}
 
-        <div className="mb-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4 sm:p-6 shadow-sm">
 
           <div className="grid grid-cols-1 gap-5 md:grid-cols-4">
 
@@ -577,7 +577,7 @@ export default function ReportsPage() {
 
             </div>
 
-            <div className="flex items-end gap-2">
+            <div className="flex flex-wrap items-end gap-2">
 
               <button
                 type="button"

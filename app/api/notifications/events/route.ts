@@ -7,7 +7,7 @@ import { isNotificationChannel, isNotificationEventType } from "@/lib/notificati
 
 const STAFF_EVENT_ROLES: Record<string, Set<string>> = {
   admission_created: new Set(["super admin", "admin", "manager", "reception"]),
-  bill_generated: new Set(["super admin", "admin", "accountant"]),
+  bill_generated: new Set(["super admin", "admin", "accountant", "manager", "reception"]),
   contract_approved: new Set(["super admin", "admin", "manager", "reception"]),
   resident_notice_created: new Set(["super admin", "admin", "manager", "reception"]),
   resident_login_details_sent: new Set(["super admin", "admin", "manager", "reception"]),
@@ -39,11 +39,17 @@ export async function GET(request: NextRequest) {
     if (authError || !email) return json({ error: "Your session could not be verified." }, 401);
     const { data: staff } = await supabaseAdmin.from("staff_users").select("status").eq("email", normalizeIdentityEmail(email)).maybeSingle();
     if (!staff || String(staff.status).toLowerCase() !== "active") return json({ error: "You do not have permission to view notification logs." }, 403);
-    const { data, error } = await supabaseAdmin
+    const eventTypeFilter = request.nextUrl.searchParams.get("eventType")?.trim() ?? "";
+    let query = supabaseAdmin
       .from("notification_deliveries")
       .select("id,event_type,entity_id,resident_id,requested_channels,email_status,whatsapp_status,sms_status,email_provider_message_id,whatsapp_provider_message_id,sms_provider_message_id,status,attempt_count,last_error_code,created_at,updated_at,completed_at,residents(full_name,email)")
-      .order("created_at", { ascending: false })
-      .limit(100);
+      .order("created_at", { ascending: false });
+    if (eventTypeFilter) {
+      query = query.eq("event_type", eventTypeFilter).limit(1000);
+    } else {
+      query = query.limit(100);
+    }
+    const { data, error } = await query;
     if (error) return json({ error: "Notification logs could not be loaded." }, 500);
     return json({ logs: data ?? [] });
   } catch {

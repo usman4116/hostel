@@ -68,13 +68,13 @@ async function updateStatus(id: number, status: string) {
   fetchComplaints();
 }
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">Complaints</h1>
+    <div className="p-4 sm:p-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold sm:text-3xl">Complaints</h1>
 
         <Link
           href="/dashboard/complaints/add"
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
         >
           Add Complaint
         </Link>
@@ -130,21 +130,18 @@ async function updateStatus(id: number, status: string) {
                   </td>
 
                   <td className="border px-4 py-2">
-                    {complaint.status}
+                    <select
+                      value={complaint.status}
+                      onChange={(e) =>
+                        updateStatus(complaint.id, e.target.value)
+                      }
+                      className="border rounded px-2 py-1"
+                    >
+                      <option value="Open">Open</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Resolved">Resolved</option>
+                    </select>
                   </td>
-<td className="border px-4 py-2">
-  <select
-    value={complaint.status}
-    onChange={(e) =>
-      updateStatus(complaint.id, e.target.value)
-    }
-    className="border rounded px-2 py-1"
-  >
-    <option value="Open">Open</option>
-    <option value="In Progress">In Progress</option>
-    <option value="Resolved">Resolved</option>
-  </select>
-</td>
                   <td className="border px-4 py-2">
                     {new Date(complaint.created_at).toLocaleString()}
                   </td>

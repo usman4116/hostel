@@ -510,7 +510,7 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={saving}
-              className="rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white disabled:opacity-60"
+              className="w-full rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white disabled:opacity-60 sm:w-auto"
             >
               {saving ? "Saving..." : "Save Settings"}
             </button>
@@ -538,7 +538,7 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
       <h2 className="mb-5 text-xl font-bold text-slate-900">{title}</h2>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

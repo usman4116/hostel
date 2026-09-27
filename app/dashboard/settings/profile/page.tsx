@@ -29,12 +29,12 @@ export default function ProfileSettingsPage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 p-6">
+    <main className="min-h-screen bg-slate-50 p-4 sm:p-6">
       <div className="mx-auto max-w-5xl space-y-6">
 
-        <div className="rounded-3xl bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 p-8 text-white shadow-xl">
+        <div className="rounded-3xl bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 p-5 sm:p-8 text-white shadow-xl">
 
-          <h1 className="text-3xl font-bold">
+          <h1 className="text-2xl sm:text-3xl font-bold">
             Admin Profile
           </h1>
 
@@ -47,7 +47,7 @@ export default function ProfileSettingsPage() {
 
         <form
           onSubmit={handleSubmit}
-          className="rounded-3xl bg-white p-8 shadow-sm border border-slate-200"
+          className="rounded-3xl bg-white p-5 sm:p-8 shadow-sm border border-slate-200"
         >
 
           <div className="grid gap-6 md:grid-cols-2">
@@ -278,7 +278,7 @@ export default function ProfileSettingsPage() {
 
           </div>
 
-          <div className="mt-10 flex items-center justify-end gap-4">
+          <div className="mt-10 flex flex-wrap items-center justify-end gap-4">
 
             <button
               type="button"
@@ -305,7 +305,7 @@ export default function ProfileSettingsPage() {
               Review your administrator information before saving changes.
             </p>
 
-            <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200">
+            <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200">
 
               <table className="min-w-full divide-y divide-slate-200">
 

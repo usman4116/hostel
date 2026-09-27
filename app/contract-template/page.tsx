@@ -225,12 +225,12 @@ export default function ContractTemplatePage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl p-6">
+    <div className="mx-auto max-w-7xl p-4 sm:p-6">
       <div className="mb-6">
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-indigo-600">
           University Girls Hostel
         </p>
-        <h1 className="mt-2 text-3xl font-bold">Contract Templates</h1>
+        <h1 className="mt-2 text-2xl font-bold sm:text-3xl">Contract Templates</h1>
         <p className="mt-1 text-gray-600">
           Create and manage hostel contract templates.
         </p>
@@ -249,7 +249,7 @@ export default function ContractTemplatePage() {
       )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-lg border bg-white p-6">
+        <div className="rounded-lg border bg-white p-4 sm:p-6">
           <h2 className="mb-4 text-xl font-semibold">
             {editingId ? "Edit Template" : "New Template"}
           </h2>
@@ -295,7 +295,7 @@ export default function ContractTemplatePage() {
               Active template
             </label>
 
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <button
                 type="submit"
                 disabled={saving}
@@ -322,7 +322,7 @@ export default function ContractTemplatePage() {
           </form>
         </div>
 
-        <div className="rounded-lg border bg-white p-6">
+        <div className="rounded-lg border bg-white p-4 sm:p-6">
           <h2 className="mb-4 text-xl font-semibold">Existing Templates</h2>
 
           {loading ? (

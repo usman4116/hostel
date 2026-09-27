@@ -73,9 +73,9 @@ export default function AddComplaintPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow">
-        <h1 className="text-3xl font-bold mb-6">Add Complaint</h1>
+    <div className="p-4 sm:p-6">
+      <div className="mx-auto max-w-3xl rounded-lg bg-white p-4 shadow sm:p-6">
+        <h1 className="mb-6 text-2xl font-bold sm:text-3xl">Add Complaint</h1>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -171,7 +171,7 @@ export default function AddComplaintPage() {
             />
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <button
               type="submit"
               disabled={loading}

@@ -555,13 +555,13 @@ export default function StaffUserManager() {
             if (e.target === e.currentTarget && !submitting) closeModal();
           }}
         >
-          <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4 dark:border-slate-800">
-              <div>
+          <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-slate-200 bg-white p-4 shadow-2xl sm:p-6 dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-start justify-between gap-2 border-b border-slate-200 pb-4 dark:border-slate-800">
+              <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
                   {isEditing ? "Modify Account" : "New Staff Registration"}
                 </p>
-                <h3 className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">
+                <h3 className="mt-1 break-words text-xl font-bold text-slate-900 sm:text-2xl dark:text-white">
                   {isEditing ? `Edit: ${formData.full_name || formData.email}` : "Create Staff User"}
                 </h3>
               </div>
@@ -569,7 +569,7 @@ export default function StaffUserManager() {
                 type="button"
                 onClick={closeModal}
                 disabled={submitting}
-                className="rounded-xl p-2 text-2xl text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
+                className="shrink-0 rounded-xl p-2 text-2xl text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
               >
                 ×
               </button>

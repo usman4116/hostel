@@ -193,8 +193,8 @@ export default function ViewContractPage() {
   const displayedStatus = contract.status ?? "Draft";
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="mx-auto max-w-4xl rounded-xl bg-white p-6 shadow">
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
+      <div className="mx-auto max-w-4xl rounded-xl bg-white p-4 shadow sm:p-6">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-indigo-600">University Girls Hostel</p>

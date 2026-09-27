@@ -32,18 +32,9 @@ function matchesRoute(pathname: string, route: string) {
   return pathname === route || pathname.startsWith(`${route}/`);
 }
 
-function hasEmbeddedSidebar(pathname: string) {
-  return (
-    pathname === "/dashboard" ||
-    pathname === "/rooms/add" ||
-    pathname === "/beds/add" ||
-    pathname.startsWith("/residents/")
-  );
-}
-
 function AccessDeniedView() {
   return (
-    <div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center">
+    <div className="flex min-h-[60vh] flex-col items-center justify-center p-4 text-center sm:p-8">
       <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-red-100 text-red-600 dark:bg-red-950/60 dark:text-red-400">
         <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <circle cx="12" cy="12" r="10" />
@@ -81,10 +72,10 @@ function AppShellContent({ children }: { children: ReactNode }) {
   const isAllowed = loading || canAccess(pathname, searchType);
 
   return (
-    <div className="flex min-h-screen w-full">
-      {!hasEmbeddedSidebar(pathname) && <Sidebar />}
+    <div className="flex min-h-screen w-full flex-col lg:flex-row">
+      <Sidebar />
       <div className="min-w-0 flex-1">
-        <header className="flex min-h-20 items-center justify-end border-b border-slate-200 bg-white px-4 py-3 sm:px-6 lg:px-8">
+        <header className="hidden min-h-20 items-center justify-end border-b border-slate-200 bg-white px-4 py-3 sm:px-6 lg:flex lg:px-8">
           <ProfileDropdown />
         </header>
         {isAllowed ? children : <AccessDeniedView />}

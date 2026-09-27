@@ -74,6 +74,8 @@ function money(value: number) {
 
 export default function ResidentContractPage() {
   const signatureRef = useRef<SignatureCanvas | null>(null);
+  const canvasContainerRef = useRef<HTMLDivElement | null>(null);
+  const [canvasWidth, setCanvasWidth] = useState(600);
   const [data, setData] = useState<PortalContract | null>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
@@ -81,6 +83,25 @@ export default function ResidentContractPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    const container = canvasContainerRef.current;
+    if (!container) return;
+
+    const updateSize = () => {
+      const nextWidth = Math.max(Math.floor(container.clientWidth), 260);
+      setCanvasWidth((prev) => (prev !== nextWidth ? nextWidth : prev));
+    };
+
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(container);
+    window.addEventListener("resize", updateSize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateSize);
+    };
+  }, [data, loading]);
 
   const loadContract = useCallback(async () => {
     setLoading(true);
@@ -295,16 +316,16 @@ export default function ResidentContractPage() {
     }
   }
   if (loading) {
-    return <main className="min-h-screen bg-slate-50 p-8 text-slate-600">Loading your contract...</main>;
+    return <main className="min-h-screen bg-slate-50 p-4 text-slate-600 sm:p-8">Loading your contract...</main>;
   }
 
   if (!data) {
     return (
-      <main className="min-h-screen bg-slate-50 p-6">
-        <div className="mx-auto max-w-3xl rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+      <main className="min-h-screen bg-slate-50 p-4 sm:p-6">
+        <div className="mx-auto max-w-3xl rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
           <h1 className="text-2xl font-bold text-slate-900">Resident Contract</h1>
           <p className="mt-4 rounded-2xl bg-red-50 p-4 text-sm text-red-700">{error}</p>
-          <Link href="/resident-portal" className="mt-6 inline-block text-sm font-semibold text-indigo-700">Back to portal</Link>
+          <Link href="/resident-portal" className="mt-6 inline-block text-sm font-semibold text-indigo-700">← Back to portal</Link>
         </div>
       </main>
     );
@@ -321,18 +342,21 @@ export default function ResidentContractPage() {
   return (
     <main className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-5xl space-y-6">
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-indigo-600">Hostel Management System</p>
           <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-            <h1 className="text-3xl font-bold text-slate-900">Resident Contract</h1>
-            <span className="rounded-full bg-amber-100 px-4 py-2 text-sm font-bold text-amber-800">{displayStatus}</span>
+            <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">Resident Contract</h1>
+            <span className="rounded-full bg-amber-100 px-4 py-2 text-xs font-bold text-amber-800 sm:text-sm">{displayStatus}</span>
           </div>
           <p className="mt-2 text-sm text-slate-500">Signing confirms acceptance of the terms. It does not activate your admission.</p>
+          <Link href="/resident-portal" className="mt-4 inline-flex text-sm font-semibold text-indigo-700 hover:underline">
+            ← Back to portal
+          </Link>
         </section>
 
         {(message || error) && <div className={`rounded-2xl border p-4 text-sm font-medium ${error ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>{error || message}</div>}
 
-        <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:grid-cols-2 xl:grid-cols-3">
+        <section className="grid gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2 sm:gap-4 sm:p-6 xl:grid-cols-3">
           <InfoCard label="Contract Number" value={data.contract.contract_number} />
           <InfoCard label="Resident" value={data.residentName} />
           <InfoCard label="Room / Bed" value={`${data.roomNumber} / ${data.bedNumber}`} />
@@ -344,26 +368,26 @@ export default function ResidentContractPage() {
           <InfoCard label="Resident Signature" value={signatureStatus} />
         </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
           <h2 className="text-xl font-bold text-slate-900">Contract Terms</h2>
-          {terms ? <div className="mt-4 whitespace-pre-wrap rounded-2xl bg-slate-50 p-5 text-sm leading-7 text-slate-700">{terms}</div> : <p className="mt-4 text-sm text-red-700">No immutable contract terms are available. Signing is blocked.</p>}
+          {terms ? <div className="mt-4 whitespace-pre-wrap rounded-2xl bg-slate-50 p-4 text-sm leading-7 text-slate-700 sm:p-5">{terms}</div> : <p className="mt-4 text-sm text-red-700">No immutable contract terms are available. Signing is blocked.</p>}
           {data.agreementUrl && <a href={data.agreementUrl} target="_blank" rel="noopener noreferrer" className="mt-4 inline-block text-sm font-semibold text-indigo-700">Download agreement PDF</a>}
         </section>
 
         {canSubmitSignature && (
-          <form onSubmit={signContract} className="space-y-5 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <form onSubmit={signContract} className="space-y-5 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
             <div>
               <h2 className="text-xl font-bold text-slate-900">Resident Declaration</h2>
               <p className="mt-2 text-sm text-slate-600">Confirm your acceptance and provide either a drawn or uploaded handwritten signature.</p>
             </div>
             <label className="flex items-start gap-3 text-sm text-slate-700">
-              <input type="checkbox" checked={acceptedTerms} onChange={(event) => setAcceptedTerms(event.target.checked)} disabled={saving || !terms} className="mt-1 h-4 w-4" />
+              <input type="checkbox" checked={acceptedTerms} onChange={(event) => setAcceptedTerms(event.target.checked)} disabled={saving || !terms} className="mt-1 h-4 w-4 shrink-0" />
               <span>I have read and agree to all contract terms and hostel rules.</span>
             </label>
             <div>
               <p className="mb-2 text-sm font-semibold text-slate-700">Draw digital signature</p>
-              <div className="overflow-hidden rounded-xl border border-slate-300 bg-white">
-                <SignatureCanvas ref={signatureRef} penColor="black" canvasProps={{ width: 900, height: 220, className: "w-full" }} />
+              <div ref={canvasContainerRef} className="overflow-hidden rounded-xl border border-slate-300 bg-white">
+                <SignatureCanvas ref={signatureRef} penColor="black" canvasProps={{ width: canvasWidth, height: 200, className: "block h-[200px] w-full touch-none" }} />
               </div>
               <button type="button" onClick={() => signatureRef.current?.clear()} disabled={saving} className="mt-3 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Clear</button>
             </div>
@@ -375,12 +399,12 @@ export default function ResidentContractPage() {
                 <span className="mt-2 block text-xs text-slate-500">PNG, JPG, or JPEG; maximum 5 MB.</span>
               </label>
             </div>
-            <button type="submit" disabled={saving || !terms} className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{saving ? "Submitting Signature..." : "Submit Signature"}</button>
+            <button type="submit" disabled={saving || !terms} className="w-full rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">{saving ? "Submitting Signature..." : "Submit Signature"}</button>
           </form>
         )}
 
         {!canSubmitSignature && signed && (
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <h2 className="text-xl font-bold text-slate-900">Signature Submitted</h2>
             <p className="mt-2 text-sm text-slate-600">Your signature can no longer be edited. Management must approve it or request a re-sign.</p>
           </section>

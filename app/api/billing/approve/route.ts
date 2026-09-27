@@ -193,6 +193,31 @@ export async function POST(request: NextRequest) {
         idempotencyKey: `bill-approved:${billId}`,
       });
 
+      const nowIso = new Date().toISOString();
+      await supabaseAdmin
+        .from("notification_deliveries")
+        .upsert(
+          {
+            event_key: `bill_generated:${billId}`,
+            event_type: "bill_generated",
+            entity_id: billId,
+            resident_id: text(bill.resident_id),
+            requested_channels: ["email"],
+            email_status: dispatch.status,
+            email_provider_message_id: dispatch.providerMessageId,
+            status:
+              dispatch.status === "sent"
+                ? "complete"
+                : dispatch.status === "configuration_required"
+                  ? "configuration_required"
+                  : "failed",
+            last_error_code: dispatch.status === "sent" ? null : dispatch.error,
+            completed_at: dispatch.status === "sent" ? nowIso : null,
+            updated_at: nowIso,
+          },
+          { onConflict: "event_key" },
+        );
+
       outcomes.push({
         billId,
         billNumber,

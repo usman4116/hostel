@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Sidebar from "@/components/layout/Sidebar";
 import { supabase } from "@/lib/supabase";
 import { addSingleBed } from "@/lib/bedProvisioning";
 import { getNextCanonicalBedLabels } from "@/lib/bedLabels";
@@ -145,136 +144,132 @@ export default function AddBedPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50">
-      <div className="flex">
-        <Sidebar />
+    <main className="min-h-screen bg-slate-50 p-4 sm:p-6 md:p-10">
+      <section className="mx-auto max-w-3xl">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">Add Bed</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Create and allocate a new bed to a room.
+          </p>
+        </div>
 
-        <section className="flex-1 p-6 md:p-10">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-slate-900">Add Bed</h1>
-            <p className="mt-1 text-sm text-slate-500">
-              Create and allocate a new bed to a room.
+        {error && (
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
+            {error}
+          </div>
+        )}
+
+        {message && (
+          <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-700">
+            {message}
+          </div>
+        )}
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-xs sm:p-8">
+          <h2 className="mb-6 text-xl font-bold text-slate-900">
+            Bed Information
+          </h2>
+
+          {loading ? (
+            <p className="py-8 text-center text-sm text-slate-500">
+              Loading rooms...
             </p>
-          </div>
-
-          {error && (
-            <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">
-              {error}
-            </div>
-          )}
-
-          {message && (
-            <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-700">
-              {message}
-            </div>
-          )}
-
-          <div className="max-w-3xl rounded-3xl border border-slate-200 bg-white p-6 shadow-xs sm:p-8">
-            <h2 className="mb-6 text-xl font-bold text-slate-900">
-              Bed Information
-            </h2>
-
-            {loading ? (
-              <p className="py-8 text-center text-sm text-slate-500">
-                Loading rooms...
-              </p>
-            ) : rooms.length === 0 ? (
-              <p className="py-8 text-center text-sm text-slate-500">
-                No active rooms found. Please create an active room first.
-              </p>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid gap-6 md:grid-cols-2">
-                  <div>
-                    <label className="mb-2 block text-sm font-semibold text-slate-700">
-                      Room *
-                    </label>
-                    <select
-                      value={selectedRoomId}
-                      onChange={(e) => void handleRoomChange(e.target.value)}
-                      className="w-full rounded-xl border border-slate-300 p-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                      required
-                    >
-                      {rooms.map((room) => (
-                        <option key={room.id} value={room.id}>
-                          Room {room.room_number} ({room.active_beds_count} /{" "}
-                          {room.total_beds} beds)
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-sm font-semibold text-slate-700">
-                      Bed Number / Label *
-                    </label>
-                    <input
-                      type="text"
-                      value={bedNumber}
-                      onChange={(e) => setBedNumber(e.target.value)}
-                      placeholder="e.g. 106 E"
-                      className="w-full rounded-xl border border-slate-300 p-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                      required
-                    />
-                    <p className="mt-1 text-xs text-slate-400">
-                      Auto-suggested for this room. You can also customize the
-                      label.
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-sm font-semibold text-slate-700">
-                      Mattress Condition
-                    </label>
-                    <select
-                      value={mattressCondition}
-                      onChange={(e) => setMattressCondition(e.target.value)}
-                      className="w-full rounded-xl border border-slate-300 p-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    >
-                      <option value="Good">Good</option>
-                      <option value="Fair">Fair</option>
-                      <option value="Damaged">Damaged</option>
-                      <option value="Not Available">Not Available</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-sm font-semibold text-slate-700">
-                      Mattress Cover
-                    </label>
-                    <select
-                      value={mattressCover}
-                      onChange={(e) => setMattressCover(e.target.value)}
-                      className="w-full rounded-xl border border-slate-300 p-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    >
-                      <option value="Available">Available</option>
-                      <option value="Not Available">Not Available</option>
-                      <option value="Damaged">Damaged</option>
-                    </select>
-                  </div>
+          ) : rooms.length === 0 ? (
+            <p className="py-8 text-center text-sm text-slate-500">
+              No active rooms found. Please create an active room first.
+            </p>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid gap-6 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">
+                    Room *
+                  </label>
+                  <select
+                    value={selectedRoomId}
+                    onChange={(e) => void handleRoomChange(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 p-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    required
+                  >
+                    {rooms.map((room) => (
+                      <option key={room.id} value={room.id}>
+                        Room {room.room_number} ({room.active_beds_count} /{" "}
+                        {room.total_beds} beds)
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                <div className="flex items-center gap-4 pt-4">
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-50"
-                  >
-                    {saving ? "Saving..." : "Save Bed"}
-                  </button>
-
-                  <Link
-                    href="/beds"
-                    className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                  >
-                    Cancel
-                  </Link>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">
+                    Bed Number / Label *
+                  </label>
+                  <input
+                    type="text"
+                    value={bedNumber}
+                    onChange={(e) => setBedNumber(e.target.value)}
+                    placeholder="e.g. 106 E"
+                    className="w-full rounded-xl border border-slate-300 p-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    required
+                  />
+                  <p className="mt-1 text-xs text-slate-400">
+                    Auto-suggested for this room. You can also customize the
+                    label.
+                  </p>
                 </div>
-              </form>
-            )}
-          </div>
-        </section>
-      </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">
+                    Mattress Condition
+                  </label>
+                  <select
+                    value={mattressCondition}
+                    onChange={(e) => setMattressCondition(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 p-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  >
+                    <option value="Good">Good</option>
+                    <option value="Fair">Fair</option>
+                    <option value="Damaged">Damaged</option>
+                    <option value="Not Available">Not Available</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">
+                    Mattress Cover
+                  </label>
+                  <select
+                    value={mattressCover}
+                    onChange={(e) => setMattressCover(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 p-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  >
+                    <option value="Available">Available</option>
+                    <option value="Not Available">Not Available</option>
+                    <option value="Damaged">Damaged</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:items-center sm:gap-4">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="rounded-xl bg-indigo-600 px-6 py-3 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {saving ? "Saving..." : "Save Bed"}
+                </button>
+
+                <Link
+                  href="/beds"
+                  className="rounded-xl border border-slate-300 px-6 py-3 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Cancel
+                </Link>
+              </div>
+            </form>
+          )}
+        </div>
+      </section>
     </main>
   );
 }

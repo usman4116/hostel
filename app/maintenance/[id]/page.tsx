@@ -381,8 +381,8 @@ export default function MaintenanceDetailPage() {
         )}
 
         {/* Header and Action Card */}
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
+        <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <Link
               href="/maintenance"
               className="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition"
@@ -482,7 +482,7 @@ export default function MaintenanceDetailPage() {
         </section>
 
         {/* Key Info Grid */}
-        <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:grid-cols-2 lg:grid-cols-3">
+        <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2 sm:p-6 lg:grid-cols-3">
           <Info label="Resident" value={name(resident, ["full_name"])} />
           <Info
             label="Admission"
@@ -515,7 +515,7 @@ export default function MaintenanceDetailPage() {
         </section>
 
         {/* Status Timeline */}
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
           <h2 className="text-xl font-bold text-slate-900">Status Timeline</h2>
           <div className="mt-5 grid gap-3 md:grid-cols-2 lg:grid-cols-5">
             <Timeline label="1. Reported" date={request.complaint_date || request.created_at} />
@@ -540,7 +540,7 @@ export default function MaintenanceDetailPage() {
         </section>
 
         {/* Full Request Details */}
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
           <h2 className="text-lg font-bold text-slate-900">Full Request Information</h2>
           <TextBlock
             label="Problem Description"
@@ -563,7 +563,7 @@ export default function MaintenanceDetailPage() {
         {/* Complete Modal */}
         {showCompleteModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-2xl">
+            <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-slate-200 bg-white p-4 shadow-2xl sm:p-8">
               <div className="flex items-center justify-between border-b border-slate-200 pb-4">
                 <div>
                   <h3 className="text-xl font-bold text-slate-900">Mark Maintenance as Completed</h3>
@@ -628,7 +628,7 @@ export default function MaintenanceDetailPage() {
                   />
                 </div>
 
-                <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
+                <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-3">
                   <button
                     type="button"
                     onClick={() => setShowCompleteModal(false)}
@@ -689,9 +689,9 @@ function TextBlock({ label, value }: { label: string; value: string }) {
 function PhotoGallery({ title, urls }: { title: string; urls: string[] }) {
   if (urls.length === 0) return null;
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
       <h2 className="text-xl font-bold text-slate-900">{title}</h2>
-      <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
         {urls.map((url, index) => (
           <a
             key={`${url}-${index}`}

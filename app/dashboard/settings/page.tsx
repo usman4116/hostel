@@ -156,15 +156,15 @@ const settingsItems: SettingsItem[] = [
 
 export default function SettingsPage() {
   return (
-    <div className="space-y-6">
-      <div className="rounded-3xl bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 p-8 text-white shadow-xl">
+    <div className="space-y-6 p-4 sm:p-6">
+      <div className="rounded-3xl bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 p-5 sm:p-8 text-white shadow-xl">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-sm uppercase tracking-widest text-blue-100">
               University Girls Hostel Administration
             </p>
 
-            <h1 className="mt-2 text-3xl font-bold">
+            <h1 className="mt-2 text-2xl sm:text-3xl font-bold">
               Settings Dashboard
             </h1>
 

@@ -420,7 +420,7 @@ export default function InventoryIssuePage() {
     <div className="min-h-screen bg-gray-50 px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl">
 
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
 
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
@@ -466,7 +466,7 @@ export default function InventoryIssuePage() {
 
         <form
           onSubmit={handleSubmit}
-          className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
+          className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6"
         >
             <h2 className="mb-4 text-lg font-semibold text-gray-900">
             Inventory Item
@@ -678,7 +678,7 @@ export default function InventoryIssuePage() {
 
           </div>
 
-          <div className="mt-7 flex justify-end gap-3">
+          <div className="mt-7 flex flex-wrap justify-end gap-3">
 
             <Link
               href="/dashboard/inventory"

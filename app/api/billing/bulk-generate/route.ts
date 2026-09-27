@@ -261,7 +261,7 @@ export async function POST(request: NextRequest) {
 
     const notificationResults = await Promise.allSettled(
       (created ?? []).map((bill) =>
-        notifyResidentEvent("bill_generated", bill.id),
+        notifyResidentEvent("bill_generated", bill.id, { channels: ["email"] }),
       ),
     );
 

@@ -33,13 +33,13 @@ export default function PrivacySettingsPage() {
   ]);
 
   return (
-    <main className="min-h-screen bg-slate-50 p-6">
+    <main className="min-h-screen bg-slate-50 p-4 sm:p-6">
 
       <div className="mx-auto max-w-7xl space-y-6">
 
-        <div className="rounded-3xl bg-gradient-to-r from-slate-800 via-slate-700 to-gray-800 p-8 text-white shadow-xl">
+        <div className="rounded-3xl bg-gradient-to-r from-slate-800 via-slate-700 to-gray-800 p-5 sm:p-8 text-white shadow-xl">
 
-          <h1 className="text-3xl font-bold">
+          <h1 className="text-2xl sm:text-3xl font-bold">
             Privacy Settings
           </h1>
 

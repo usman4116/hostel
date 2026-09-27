@@ -425,15 +425,15 @@ export default function AddNoticePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
 
       <div className="mx-auto max-w-4xl">
 
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
 
           <div>
 
-            <h1 className="text-3xl font-bold">
+            <h1 className="text-2xl font-bold sm:text-3xl">
               Add Notice
             </h1>
 
@@ -467,7 +467,7 @@ export default function AddNoticePage() {
         <label className="block my-4"><input type="checkbox" checked={showAsPopup} onChange={event => setShowAsPopup(event.target.checked)} /> Show as Resident Portal popup</label>
       <form
           onSubmit={handleSubmit}
-          className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
+          className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6"
         >
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
 
@@ -794,7 +794,7 @@ export default function AddNoticePage() {
               </select>
             </div>
 
-            <div className="flex items-center pt-8">
+            <div className="flex items-center pt-2 md:pt-8">
 
               <input
                 id="pinned"
@@ -819,7 +819,7 @@ export default function AddNoticePage() {
 
           </div>
 
-          <div className="mt-8 flex justify-end gap-3">
+          <div className="mt-8 flex flex-wrap justify-end gap-3">
 
             <Link
               href="/dashboard/notices"

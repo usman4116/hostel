@@ -631,7 +631,7 @@ export default function ResidentsPage() {
       try {
         const login = await ensureResidentLogin(String(result.data.id));
         successMessage = login.created
-          ? `Resident added successfully. Portal login: ${login.email} | One-time temporary password: ${login.temporaryPassword} (Provide to resident now; not stored in database).`
+          ? `Resident added successfully. Portal login: ${login.email} | One-time temporary password: ${login.temporaryPassword} (${login.emailSent ? "Credentials sent via email" : "Provide to resident now; not stored in database"}).`
           : `Resident added successfully. A portal login already exists for ${login.email}.`;
       } catch (loginError) {
         successMessage = `Resident added successfully, but the portal login could not be created automatically. ${
@@ -669,7 +669,7 @@ export default function ResidentsPage() {
     try {
       const result = await resetResidentPassword(resident.id);
       setMessage(
-        `Portal password reset successfully. Email: ${result.email} | One-time temporary password: ${result.temporaryPassword} (Provide to resident now; not stored in database).`,
+        `Portal password reset successfully. Email: ${result.email} | One-time temporary password: ${result.temporaryPassword} (${result.emailSent ? "Credentials sent via email" : "Provide to resident now; not stored in database"}).`,
       );
     } catch (resetError) {
       setError(

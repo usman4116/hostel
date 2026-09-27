@@ -4,11 +4,13 @@ export type ResidentLoginResult = {
   created: boolean;
   email: string;
   temporaryPassword: string | null;
+  emailSent?: boolean;
 };
 
 export type ResidentPasswordResetResult = {
   email: string;
   temporaryPassword: string;
+  emailSent?: boolean;
 };
 
 async function getValidAccessToken() {
@@ -102,6 +104,7 @@ export async function ensureResidentLogin(
       typeof payload.temporaryPassword === "string"
         ? payload.temporaryPassword
         : null,
+    emailSent: Boolean(payload.emailSent),
   };
 }
 
@@ -122,5 +125,6 @@ export async function resetResidentPassword(
   return {
     email: payload.email,
     temporaryPassword: payload.temporaryPassword,
+    emailSent: Boolean(payload.emailSent),
   };
 }

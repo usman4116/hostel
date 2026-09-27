@@ -1,7 +1,9 @@
 import "server-only";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { buildBillApprovalEmail } from "@/lib/email/billApprovalEmail";
 import { gmailSenderConfigured, sendGmailEmail } from "@/lib/email/gmailClient";
+import { sendTransactionalEmail } from "@/lib/email/resendClient";
 import { securityDepositAdmissionId } from "@/lib/paymentReceiptPurpose";
 import type { NotificationChannel, NotificationEventType, NotificationRequestOptions, NotificationRequestResult } from "@/lib/notifications/types";
 
@@ -15,6 +17,7 @@ type EventMessage = {
   phone: string;
   subject: string;
   body: string;
+  html?: string;
   parameters: string[];
 };
 
@@ -30,7 +33,7 @@ const templateEnv: Record<NotificationEventType, string> = {
   resident_login_details_sent: "WHATSAPP_TEMPLATE_RESIDENT_LOGIN_DETAILS_SENT",
 };
 
-const defaultChannels: NotificationChannel[] = ["email", "whatsapp"];
+const defaultChannels: NotificationChannel[] = ["email"];
 
 function text(value: unknown) {
   return String(value ?? "").trim();
@@ -151,13 +154,39 @@ async function resolveAdmission(entityId: string) {
 
 async function resolveBill(entityId: string) {
   const { data: bill, error } = await supabaseAdmin.from("bills")
-    .select("id, resident_id, bill_number, billing_month, total_amount, rent_amount, electricity_amount, ac_amount, other_amount, due_date, balance_amount, bill_status, created_at")
+    .select("id, resident_id, bill_number, billing_month, total_amount, rent_amount, electricity_amount, ac_amount, other_amount, discount_amount, paid_amount, due_date, balance_amount, bill_status, created_at")
     .eq("id", entityId).maybeSingle();
-  if (error || !bill || !recent(bill.created_at) || ["cancelled", "archived"].includes(normalized(bill.bill_status))) throw new Error("event_unavailable");
+  if (error || !bill || ["cancelled", "archived"].includes(normalized(bill.bill_status))) throw new Error("event_unavailable");
   const resident = await loadResident(text(bill.resident_id));
   const components = [Number(bill.rent_amount) > 0 ? "Rent" : "", Number(bill.electricity_amount) > 0 ? "Electricity" : "", Number(bill.ac_amount) > 0 ? "AC" : "", Number(bill.other_amount) > 0 ? "Other" : ""].filter(Boolean).join(", ") || "Monthly bill";
   const values = [text(resident.full_name) || "Resident", text(bill.bill_number) || entityId, displayDate(bill.billing_month), money(bill.total_amount), components, displayDate(bill.due_date), money(bill.balance_amount)];
-  return message("bill_generated", entityId, resident, `New StayHub bill ${values[1]}`, [`Bill: ${values[1]}`, `Billing month: ${values[2]}`, `Amount: ${values[3]}`, `Type: ${values[4]}`, `Due date: ${values[5]}`, `Outstanding: ${values[6]}`], values);
+  const hostelName = text(process.env.NEXT_PUBLIC_HOSTEL_NAME || process.env.NOTIFICATION_EMAIL_FROM_NAME) || "University Girls Hostel";
+  const billEmail = buildBillApprovalEmail({
+    residentName: values[0],
+    billNumber: values[1],
+    billingMonth: text(bill.billing_month).slice(0, 7) || text(bill.billing_month),
+    dueDate: text(bill.due_date).slice(0, 10),
+    rentAmount: Number(bill.rent_amount ?? 0),
+    electricityAmount: Number(bill.electricity_amount ?? 0),
+    acAmount: Number(bill.ac_amount ?? 0),
+    otherAmount: Number(bill.other_amount ?? 0),
+    discountAmount: Number(bill.discount_amount ?? 0),
+    totalAmount: Number(bill.total_amount ?? 0),
+    paidAmount: Number(bill.paid_amount ?? 0),
+    balanceAmount: Number(bill.balance_amount ?? 0),
+    portalUrl: portalUrl("/payments"),
+    hostelName,
+  });
+  return {
+    eventKey: `bill_generated:${entityId}`,
+    residentId: text(resident.id),
+    email: text(resident.email),
+    phone: text(resident.phone),
+    subject: billEmail.subject,
+    body: billEmail.text,
+    html: billEmail.html,
+    parameters: values,
+  };
 }
 
 async function resolveReceipt(eventType: "receipt_submitted" | "payment_verified" | "payment_rejected", entityId: string) {
@@ -349,7 +378,7 @@ async function sendEmail(event: EventMessage): Promise<ChannelDelivery> {
   const apiKey = text(process.env.RESEND_API_KEY);
   const fromAddress = text(process.env.NOTIFICATION_EMAIL_FROM);
   const resendConfigured = Boolean(apiKey && fromAddress);
-  const configured = gmailConfigured || resendConfigured;
+  const configured = resendConfigured || gmailConfigured;
 
   if (!event.email) {
     console.info("[notifications:diagnostic] Email delivery.", {
@@ -360,7 +389,30 @@ async function sendEmail(event: EventMessage): Promise<ChannelDelivery> {
     return { status: "skipped", providerMessageId: null };
   }
 
-  const html = `<div style="font-family:Arial,sans-serif;white-space:pre-line">${escapeHtml(event.body)}</div>`;
+  const html = event.html || `<div style="font-family:Arial,sans-serif;white-space:pre-line">${escapeHtml(event.body)}</div>`;
+
+  if (resendConfigured) {
+    const dispatch = await sendTransactionalEmail({
+      to: event.email,
+      subject: event.subject,
+      html,
+      text: event.body,
+    });
+
+    console.info("[notifications:diagnostic] Email delivery.", {
+      configured: true,
+      provider: "resend",
+      status: dispatch.status,
+      errorMessage: dispatch.error,
+    });
+
+    if (dispatch.status === "sent" || !gmailConfigured) {
+      return {
+        status: dispatch.status,
+        providerMessageId: dispatch.providerMessageId,
+      };
+    }
+  }
 
   if (gmailConfigured) {
     try {
@@ -390,59 +442,12 @@ async function sendEmail(event: EventMessage): Promise<ChannelDelivery> {
     }
   }
 
-  if (!resendConfigured) {
-    console.info("[notifications:diagnostic] Email delivery.", {
-      configured: false,
-      status: "configuration_required",
-      errorMessage: "email_configuration_missing",
-    });
-    return { status: "configuration_required", providerMessageId: null };
-  }
-
-  const fromName = text(process.env.NOTIFICATION_EMAIL_FROM_NAME) || "StayHub";
-
-  try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "Idempotency-Key": `${event.eventKey}:email`,
-      },
-      body: JSON.stringify({
-        from: `${fromName} <${fromAddress}>`,
-        to: [event.email],
-        subject: event.subject,
-        text: event.body,
-        html,
-      }),
-    });
-
-    const payload = (await response.json().catch(() => null)) as {
-      id?: unknown;
-      message?: unknown;
-    } | null;
-
-    console.info("[notifications:diagnostic] Email delivery.", {
-      configured: true,
-      provider: "resend",
-      status: response.ok ? "sent" : "failed",
-      errorMessage: response.ok ? null : text(payload?.message) || `resend_http_${response.status}`,
-    });
-
-    return {
-      status: response.ok ? "sent" : "failed",
-      providerMessageId: response.ok ? text(payload?.id) || null : null,
-    };
-  } catch (error) {
-    console.warn("[notifications:diagnostic] Email delivery.", {
-      configured: true,
-      provider: "resend",
-      status: "failed",
-      errorMessage: safeErrorMessage(error),
-    });
-    return { status: "failed", providerMessageId: null };
-  }
+  console.info("[notifications:diagnostic] Email delivery.", {
+    configured: false,
+    status: "configuration_required",
+    errorMessage: "email_configuration_missing",
+  });
+  return { status: "configuration_required", providerMessageId: null };
 }
 async function sendWhatsApp(eventType: NotificationEventType, event: EventMessage): Promise<ChannelDelivery> {
   const token = text(process.env.WHATSAPP_ACCESS_TOKEN);
@@ -546,7 +551,8 @@ export async function notifyResidentEvent(
         .maybeSingle();
       if (existing.error || !existing.data) throw new Error("ledger_unavailable");
       delivery = existing.data;
-      if (delivery.status === "processing" || delivery.status === "complete") {
+      const emailAlreadySent = !channels.includes("email") || delivery.email_status === "sent";
+      if (delivery.status === "processing" || (delivery.status === "complete" && emailAlreadySent)) {
         results.push(publicResult(delivery.email_status as ChannelStatus, delivery.whatsapp_status as ChannelStatus, delivery.sms_status as ChannelStatus));
         continue;
       }
@@ -577,7 +583,7 @@ export async function notifyResidentEvent(
     const priorWhatsApp = delivery.whatsapp_status as ChannelStatus | null;
     const priorSms = delivery.sms_status as ChannelStatus | null;
     const emailDelivery = channels.includes("email")
-      ? priorEmail === "sent" || priorEmail === "skipped" ? { status: priorEmail, providerMessageId: text(delivery.email_provider_message_id) || null } : await sendEmail(event)
+      ? priorEmail === "sent" ? { status: priorEmail, providerMessageId: text(delivery.email_provider_message_id) || null } : await sendEmail(event)
       : { status: "skipped" as const, providerMessageId: null };
     const whatsappDelivery = channels.includes("whatsapp")
       ? priorWhatsApp === "sent" || priorWhatsApp === "skipped" ? { status: priorWhatsApp, providerMessageId: text(delivery.whatsapp_provider_message_id) || null } : await sendWhatsApp(eventType, event)

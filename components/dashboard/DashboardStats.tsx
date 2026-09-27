@@ -45,10 +45,10 @@ export default function DashboardStats({ data }: { data: DashboardData }) {
   return (
     <div className="mb-10 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
       {cards.map((card) => (
-        <article key={card.label} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <article key={card.label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-800">
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{card.label}</p>
-          <div className="mt-2 flex items-baseline gap-2">
-            <p className={`text-3xl font-bold ${card.color}`}>{card.value}</p>
+          <div className="mt-2 flex flex-wrap items-baseline gap-2">
+            <p className={`text-2xl font-bold sm:text-3xl ${card.color}`}>{card.value}</p>
             {card.sub && <p className="text-sm font-medium text-slate-500 dark:text-slate-400">({card.sub})</p>}
           </div>
         </article>

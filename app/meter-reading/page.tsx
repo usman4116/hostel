@@ -591,11 +591,11 @@ export default function MeterReadingPage() {
         </div>
 
         {/* Tab Selector */}
-        <div className="flex gap-2 border-b border-slate-200 bg-white px-6 pt-2 rounded-2xl border shadow-sm">
+        <div className="flex gap-2 overflow-x-auto rounded-2xl border border-b border-slate-200 bg-white px-3 pt-2 shadow-sm sm:px-6">
           <button
             type="button"
             onClick={() => setActiveTab("readings")}
-            className={`flex items-center gap-2 border-b-2 px-5 py-3.5 text-sm font-bold transition ${
+            className={`flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3.5 text-sm font-bold transition sm:px-5 ${
               activeTab === "readings"
                 ? "border-indigo-600 text-indigo-600"
                 : "border-transparent text-slate-500 hover:text-slate-800"
@@ -616,7 +616,7 @@ export default function MeterReadingPage() {
           <button
             type="button"
             onClick={() => setActiveTab("students")}
-            className={`flex items-center gap-2 border-b-2 px-5 py-3.5 text-sm font-bold transition ${
+            className={`flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3.5 text-sm font-bold transition sm:px-5 ${
               activeTab === "students"
                 ? "border-indigo-600 text-indigo-600"
                 : "border-transparent text-slate-500 hover:text-slate-800"
@@ -1012,7 +1012,7 @@ export default function MeterReadingPage() {
         {/* Modal: Add or Edit Reading */}
         {showAddModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-2xl">
+            <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl border border-slate-200 bg-white p-4 shadow-2xl sm:p-8">
               <div className="flex items-center justify-between border-b border-slate-200 pb-4">
                 <div>
                   <h3 className="text-xl font-bold text-slate-900">
@@ -1131,13 +1131,13 @@ export default function MeterReadingPage() {
 
                 {/* Real-time Calculation Card */}
                 <div className="rounded-2xl border border-indigo-200 bg-indigo-50/70 p-4 shadow-sm">
-                  <div className="flex items-center justify-between text-xs font-semibold text-indigo-900">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-indigo-900">
                     <span>⚡ Units Consumed (Current - Previous):</span>
                     <span className="font-mono text-base font-bold">
                       {liveCalculation.units.toFixed(2)} units
                     </span>
                   </div>
-                  <div className="mt-2.5 flex items-center justify-between border-t border-indigo-200 pt-2.5 text-sm font-bold text-slate-900">
+                  <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-indigo-200 pt-2.5 text-sm font-bold text-slate-900">
                     <span>Total Calculated Charge:</span>
                     <span className="text-xl font-extrabold text-emerald-600">
                       {formatMoney(liveCalculation.total)}
@@ -1161,7 +1161,7 @@ export default function MeterReadingPage() {
                   />
                 </div>
 
-                <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
+                <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-3">
                   <button
                     type="button"
                     onClick={() => setShowAddModal(false)}
@@ -1185,7 +1185,7 @@ export default function MeterReadingPage() {
         {/* Modal: Update Unit Price */}
         {showPriceModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-2xl">
+            <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-3xl border border-slate-200 bg-white p-4 shadow-2xl sm:p-8">
               <div className="flex items-center justify-between border-b border-slate-200 pb-4">
                 <h3 className="text-xl font-bold text-slate-900">
                   Update Electricity Unit Rate
@@ -1224,7 +1224,7 @@ export default function MeterReadingPage() {
                   </p>
                 </div>
 
-                <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
+                <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-3">
                   <button
                     type="button"
                     onClick={() => setShowPriceModal(false)}

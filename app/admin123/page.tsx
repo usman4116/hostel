@@ -160,11 +160,11 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-slate-100">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl">
+    <main className="flex min-h-screen items-center justify-center bg-slate-100 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl sm:p-8">
         <div className="flex flex-col items-center justify-center mb-6">
           <img src="/logo.jpg" alt="University Girls Hostel" className="h-24 w-24 rounded-full object-cover shadow-sm mb-4" />
-          <h1 className="text-3xl font-bold text-center text-blue-700 leading-tight">
+          <h1 className="text-2xl font-bold text-center text-blue-700 leading-tight sm:text-3xl">
             University Girls Hostel<br/>Admin
           </h1>
           <p className="mt-2 text-center text-gray-500 font-medium tracking-wide">

@@ -616,35 +616,102 @@ entries.push({
   return (
     <main className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-indigo-600">University Girls Hostel</p>
-          <h1 className="mt-2 text-3xl font-bold text-slate-900">Payments & Receipts</h1>
+          <h1 className="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl">Payments & Receipts</h1>
           <p className="mt-1 text-sm text-slate-500">{resident ? `Financial activity for ${resident.full_name ?? "Resident"}.` : "Submit receipts and review verification history."}</p>
-          <div className="mt-4 flex gap-3"><Link href="/resident-portal" className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold">Portal Home</Link><Link href="/resident-portal/bills" className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">My Bills</Link></div>
+          <div className="mt-4 flex flex-wrap gap-3"><Link href="/resident-portal" className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold">Portal Home</Link><Link href="/resident-portal/bills" className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">My Bills</Link></div>
         </section>
 
         {(message || error) && <section className={`rounded-2xl border px-4 py-3 text-sm font-medium ${error ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>{error || message}</section>}
 
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-          {[['Rent Due', money(financial.monthlyRentDue)], ['Total Payable (Rent + Security Deposit)', money(combined.total)], ['Account Outstanding (all charges)', money(summary.outstanding)], ['Security Deposit Due', money(depositOutstanding)], ['Current Pending Bills', String(summary.pendingBills)], ['Overdue Bills', String(summary.overdueBills)], ['Verified Payments', money(summary.verifiedPayments)], ['Pending Verification', String(summary.pendingReceipts)]].map(([label, value]) => <article key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-sm text-slate-500">{label}</p><p className="mt-2 text-2xl font-bold">{value}</p></article>)}
+        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+          {[['Rent Due', money(financial.monthlyRentDue)], ['Total Payable (Rent + Security Deposit)', money(combined.total)], ['Account Outstanding (all charges)', money(summary.outstanding)], ['Security Deposit Due', money(depositOutstanding)], ['Current Pending Bills', String(summary.pendingBills)], ['Overdue Bills', String(summary.overdueBills)], ['Verified Payments', money(summary.verifiedPayments)], ['Pending Verification', String(summary.pendingReceipts)]].map(([label, value]) => <article key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"><p className="text-sm text-slate-500">{label}</p><p className="mt-2 text-xl font-bold sm:text-2xl">{value}</p></article>)}
         </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
           <h2 className="text-xl font-bold">Upload Payment Receipt</h2>
           <p className="mt-1 text-sm text-slate-500">PDF, JPEG, or PNG; maximum 5 MB. Submission remains pending until verified.</p>
-          {selectedBillId === "combined" && <p className="mt-4 text-amber-800">Rent: {money(financial.monthlyRentDue)}. Security Deposit: {money(depositOutstanding)}. Submit one receipt for the exact combined amount; it will remain pending until admin verification.</p>}
-          {!regularBills.length && financial.monthlyRentDue > 0 && <p className="mt-4">Rent is due. Contact management to issue your rent bill before submitting payment.</p>}
-          <form onSubmit={uploadReceipt} className="mt-5 grid gap-4 md:grid-cols-2">
-            <label><span className="mb-2 block text-sm font-semibold">Payment For *</span><select required value={selectedBillId} onChange={(event) => selectBill(event.target.value)} disabled={loading || uploading} className={inputClass}><option value="">Select an outstanding obligation</option>{financial.monthlyRentDue > 0 && !regularBills.some(bill => isPayableBill(bill.bill_status)) && <option disabled>Rent — {money(financial.monthlyRentDue)} due (awaiting bill)</option>}{depositOutstanding > 0 && <option value={depositBill ? depositBill.id : SECURITY_DEPOSIT_OPTION} disabled={pendingDepositReceipt || !depositBill}>{depositBill ? `Security Deposit (${depositBill.bill_number})` : "Security Deposit"} — {money(depositOutstanding)}{pendingDepositReceipt ? " — Pending Verification" : ""}</option>}{regularBills.filter((bill) => isPayableBill(bill.bill_status) && bill.outstanding > 0).map((bill) => <option key={bill.id} value={bill.id}>{bill.bill_number} — {monthLabel(bill.billing_month)} — {money(bill.outstanding)}</option>)}{financial.monthlyRentDue > 0 && depositOutstanding > 0 && <option value="combined">Rent + Security Deposit — {money(combined.total)} total due</option>}</select></label>
-            <label><span className="mb-2 block text-sm font-semibold">Amount *</span><input required type="number" min="0.01" step="0.01" max={selectedBillId === SECURITY_DEPOSIT_OPTION || selectedBillId === depositBill?.id ? depositOutstanding : selectedObligation?.amount} value={amount} onChange={(event) => setAmount(event.target.value)} readOnly={selectedBillId === "combined"} disabled={uploading || (!selectedBill && selectedBillId !== SECURITY_DEPOSIT_OPTION && selectedBillId !== "combined")} className={inputClass} /></label>
-            <label><span className="mb-2 block text-sm font-semibold">Payment Method *</span><input required value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)} disabled={uploading} className={inputClass} placeholder="Cash deposit, bank transfer, card, etc." /></label>
-            <label><span className="mb-2 block text-sm font-semibold">Reference Number</span><input value={referenceNumber} onChange={(event) => setReferenceNumber(event.target.value)} disabled={uploading} className={inputClass} placeholder="Transaction reference" /></label>
-            <label className="md:col-span-2"><span className="mb-2 block text-sm font-semibold">Receipt File *</span><input id="payment-receipt-file" required type="file" accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png" onChange={handleFileChange} disabled={uploading} className={inputClass} /></label>
-            <label className="md:col-span-2"><span className="mb-2 block text-sm font-semibold">Notes</span><textarea value={notes} onChange={(event) => setNotes(event.target.value)} disabled={uploading} className={`${inputClass} min-h-24`} /></label>
-            <p className="md:col-span-2 text-sm">Purpose: {selectedBillId === "combined" ? "Rent + Security Deposit" : selectedBillId === depositBill?.id ? "Security Deposit" : selectedBill ? selectedObligation?.purpose : "Not selected"} — Amount: {money(amount)} — Method: {paymentMethod || "Not selected"} — Reference: {referenceNumber || "None"} — Proof: {selectedFile?.name || "Not selected"}</p>
-            <div className="md:col-span-2"><button type="submit" disabled={uploading || loading || !selectedBill && selectedBillId !== "combined" && selectedBillId !== SECURITY_DEPOSIT_OPTION} className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">{uploading ? "Submitting..." : "Submit for Verification"}</button></div>
+          {selectedBillId === "combined" && <p className="mt-4 text-sm text-amber-800">Rent: {money(financial.monthlyRentDue)}. Security Deposit: {money(depositOutstanding)}. Submit one receipt for the exact combined amount; it will remain pending until admin verification.</p>}
+          {!regularBills.length && financial.monthlyRentDue > 0 && <p className="mt-4 text-sm">Rent is due. Contact management to issue your rent bill before submitting payment.</p>}
+          <form onSubmit={uploadReceipt} className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <label className="min-w-0"><span className="mb-2 block text-sm font-semibold">Payment For *</span><select required value={selectedBillId} onChange={(event) => selectBill(event.target.value)} disabled={loading || uploading} className={inputClass}><option value="">Select an outstanding obligation</option>{financial.monthlyRentDue > 0 && !regularBills.some(bill => isPayableBill(bill.bill_status)) && <option disabled>Rent — {money(financial.monthlyRentDue)} due (awaiting bill)</option>}{depositOutstanding > 0 && <option value={depositBill ? depositBill.id : SECURITY_DEPOSIT_OPTION} disabled={pendingDepositReceipt || !depositBill}>{depositBill ? `Security Deposit (${depositBill.bill_number})` : "Security Deposit"} — {money(depositOutstanding)}{pendingDepositReceipt ? " — Pending Verification" : ""}</option>}{regularBills.filter((bill) => isPayableBill(bill.bill_status) && bill.outstanding > 0).map((bill) => <option key={bill.id} value={bill.id}>{bill.bill_number} — {monthLabel(bill.billing_month)} — {money(bill.outstanding)}</option>)}{financial.monthlyRentDue > 0 && depositOutstanding > 0 && <option value="combined">Rent + Security Deposit — {money(combined.total)} total due</option>}</select></label>
+            <label className="min-w-0"><span className="mb-2 block text-sm font-semibold">Amount *</span><input required type="number" min="0.01" step="0.01" max={selectedBillId === SECURITY_DEPOSIT_OPTION || selectedBillId === depositBill?.id ? depositOutstanding : selectedObligation?.amount} value={amount} onChange={(event) => setAmount(event.target.value)} readOnly={selectedBillId === "combined"} disabled={uploading || (!selectedBill && selectedBillId !== SECURITY_DEPOSIT_OPTION && selectedBillId !== "combined")} className={inputClass} /></label>
+            <label className="min-w-0"><span className="mb-2 block text-sm font-semibold">Payment Method *</span><input required value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)} disabled={uploading} className={inputClass} placeholder="Cash deposit, bank transfer, card, etc." /></label>
+            <label className="min-w-0"><span className="mb-2 block text-sm font-semibold">Reference Number</span><input value={referenceNumber} onChange={(event) => setReferenceNumber(event.target.value)} disabled={uploading} className={inputClass} placeholder="Transaction reference" /></label>
+            <label className="min-w-0 md:col-span-2"><span className="mb-2 block text-sm font-semibold">Receipt File *</span><input id="payment-receipt-file" required type="file" accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png" onChange={handleFileChange} disabled={uploading} className={inputClass} /></label>
+            <label className="min-w-0 md:col-span-2"><span className="mb-2 block text-sm font-semibold">Notes</span><textarea value={notes} onChange={(event) => setNotes(event.target.value)} disabled={uploading} className={`${inputClass} min-h-24`} /></label>
+            <p className="break-words text-sm md:col-span-2">Purpose: {selectedBillId === "combined" ? "Rent + Security Deposit" : selectedBillId === depositBill?.id ? "Security Deposit" : selectedBill ? selectedObligation?.purpose : "Not selected"} — Amount: {money(amount)} — Method: {paymentMethod || "Not selected"} — Reference: {referenceNumber || "None"} — Proof: {selectedFile?.name || "Not selected"}</p>
+            <div className="md:col-span-2"><button type="submit" disabled={uploading || loading || !selectedBill && selectedBillId !== "combined" && selectedBillId !== SECURITY_DEPOSIT_OPTION} className="w-full rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white disabled:opacity-60 sm:w-auto">{uploading ? "Submitting..." : "Submit for Verification"}</button></div>
           </form>
         </section>
+
+        <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+          <h2 className="text-xl font-bold text-slate-900">Security Deposit</h2>
+          <p className="mt-1 text-sm text-slate-500">Your security deposit obligation and verification status.</p>
+          <div className="mt-4">
+            {loading ? (
+              <p className="py-6 text-center text-sm text-slate-500">Loading...</p>
+            ) : bills.filter((b) => isSecurityDepositBill(b)).length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
+                No security deposit on record.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {bills
+                  .filter((b) => isSecurityDepositBill(b))
+                  .map((dep) => (
+                    <div
+                      key={dep.id}
+                      className="flex flex-col gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div>
+                        <p className="font-semibold text-slate-900">
+                          Security Deposit Bill ({dep.bill_number})
+                        </p>
+                        <p className="mt-1 text-sm text-slate-600">
+                          Total: {money(dep.total_amount)} · Paid: {money(dep.paid)} · Balance: {money(dep.outstanding)}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Status value={dep.displayStatus} />
+                        {isPayableBill(dep.bill_status) && dep.outstanding > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => selectBill(dep.id)}
+                            className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-700"
+                          >
+                            Select for Payment
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <HistoryTable
+          title="My Bills"
+          headers={["Bill No.", "Month", "Due Date", "Rent", "Electricity", "AC", "Other", "Discount", "Total", "Verified Paid", "Outstanding", "Status"]}
+          loading={loading}
+          empty="No bills found."
+          rows={bills.map((bill) => [
+            bill.bill_number,
+            isSecurityDepositBill(bill) ? "Security Deposit" : monthLabel(bill.billing_month),
+            bill.due_date || "—",
+            money(bill.rent_amount),
+            money(bill.electricity_amount),
+            money(bill.ac_amount),
+            money(bill.other_amount),
+            money(bill.discount_amount),
+            money(bill.total_amount),
+            money(bill.paid),
+            money(bill.outstanding),
+            <Status key="status" value={bill.displayStatus} />,
+          ])}
+        />
 
         <HistoryTable title="Payment History (all admissions)" headers={["Payment", "Type / Purpose", "Date", "Amount", "Method", "Reference", "Status", "Verification", "Notes"]} loading={loading} empty="No payment history found." rows={paymentHistoryRows} />
         <HistoryTable title="Receipt History" headers={["Date", "Payment For", "Amount", "Reference", "Status", "Notes"]} loading={loading} empty="No receipt submissions found." rows={receipts.map((receipt) => { const bill = bills.find((item) => item.id === receipt.bill_id); const depositReceipt = (!receipt.bill_id && securityDepositAdmissionId(receipt.notes) === admission?.id) || (bill && isSecurityDepositBill(bill)); return [receipt.created_at.slice(0, 10), depositReceipt ? `Security Deposit${bill ? ` (${bill.bill_number})` : ""}` : bill?.bill_number ?? "Historical bill", money(receipt.amount), receipt.reference_number ?? "—", <Status key="status" value={receipt.status} />, residentReceiptNotes(receipt.notes) || "—"]; })} />

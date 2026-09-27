@@ -195,13 +195,13 @@ export default function ResidentBillsPage() {
   return (
     <main className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm print:border-0 print:shadow-none">
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 print:border-0 print:shadow-none">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-indigo-600">University Girls Hostel</p>
-          <h1 className="mt-2 text-3xl font-bold text-slate-900">My Bills</h1>
+          <h1 className="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl">My Bills</h1>
           <p className="mt-1 text-sm text-slate-500">
             {resident ? `Financial records for ${resident.full_name ?? "Resident"}.` : "Your bill history and outstanding balances."}
           </p>
-          <div className="mt-4 flex gap-3 print:hidden">
+          <div className="mt-4 flex flex-wrap gap-3 print:hidden">
             <Link href="/resident-portal" className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Portal Home</Link>
             <Link href="/resident-portal/payments" className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">Payments & Receipts</Link>
           </div>
@@ -210,15 +210,58 @@ export default function ResidentBillsPage() {
         {error && <section className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</section>}
 
         <section className="rounded-3xl border border-slate-200 bg-white shadow-sm print:hidden">
-          <div className="grid gap-3 border-b border-slate-200 p-5 md:grid-cols-[1fr_220px_auto]">
+          <div className="grid gap-3 border-b border-slate-200 p-4 sm:p-5 md:grid-cols-[1fr_220px_auto]">
             <input value={search} onChange={(event) => setSearch(event.target.value)} className={inputClass} placeholder="Search bill number or month" />
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className={inputClass}>
               {['All', 'Pending', 'Partially Paid', 'Paid', 'Overdue', 'Cancelled'].map((status) => <option key={status}>{status}</option>)}
             </select>
-            <button type="button" onClick={() => void loadBills()} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold">Refresh</button>
+            <button type="button" onClick={() => void loadBills()} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold">Refresh</button>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Mobile Bill Cards */}
+          <div className="divide-y divide-slate-100 md:hidden">
+            {loading ? (
+              <p className="px-4 py-12 text-center text-sm text-slate-500">Loading your bills...</p>
+            ) : filteredBills.length === 0 ? (
+              <p className="px-4 py-12 text-center text-sm text-slate-500">No bills found.</p>
+            ) : (
+              filteredBills.map((bill) => (
+                <article key={bill.id} className="space-y-3 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-bold text-slate-900">{bill.bill_number}</p>
+                      <p className="mt-0.5 text-xs text-slate-500">{monthLabel(bill.billing_month)} · Due {bill.due_date}</p>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${statusClass(bill.bill_status)}`}>
+                      {bill.bill_status}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 rounded-2xl bg-slate-50 p-3 text-xs">
+                    <div>
+                      <p className="text-slate-500">Total</p>
+                      <p className="mt-1 font-bold text-slate-900">{money(bill.total_amount)}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Paid</p>
+                      <p className="mt-1 font-bold text-emerald-700">{money(bill.paid_amount)}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Balance</p>
+                      <p className="mt-1 font-bold text-red-700">{money(bill.balance_amount)}</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={() => void openBill(bill.id)} className="rounded-lg border border-indigo-200 px-3 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-50">View</button>
+                    <button type="button" onClick={() => void openBill(bill.id, true)} className="rounded-lg border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50">Print</button>
+                    <button type="button" onClick={() => void openBill(bill.id, true)} className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100">Download Voucher</button>
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
+
+          {/* Desktop Bills Table */}
+          <div className="hidden overflow-x-auto md:block">
             <table className="min-w-full divide-y divide-slate-200">
               <thead className="bg-slate-50"><tr>{["Bill", "Month", "Due", "Rent", "Electricity", "AC", "Other", "Discount", "Total", "Verified Paid", "Outstanding", "Status", "Actions"].map((heading) => <th key={heading} className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-500">{heading}</th>)}</tr></thead>
               <tbody className="divide-y divide-slate-100">
@@ -251,8 +294,8 @@ export default function ResidentBillsPage() {
         </section>
 
         {selectedBill && (
-          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm print:border-0 print:shadow-none">
-            <div className="flex items-start justify-between gap-4"><div><p className="text-sm font-semibold uppercase tracking-wider text-indigo-600">University Girls Hostel Bill</p><h2 className="mt-2 text-2xl font-bold">{selectedBill.bill_number}</h2><p className="mt-1 text-sm text-slate-500">{monthLabel(selectedBill.billing_month)} · Due {selectedBill.due_date}</p></div><button type="button" onClick={() => setSelectedBill(null)} className="rounded-lg border px-3 py-2 text-sm print:hidden">Close</button></div>
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 print:border-0 print:shadow-none">
+            <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-sm font-semibold uppercase tracking-wider text-indigo-600">University Girls Hostel Bill</p><h2 className="mt-2 text-xl font-bold sm:text-2xl">{selectedBill.bill_number}</h2><p className="mt-1 text-sm text-slate-500">{monthLabel(selectedBill.billing_month)} · Due {selectedBill.due_date}</p></div><button type="button" onClick={() => setSelectedBill(null)} className="rounded-lg border px-3 py-2 text-sm print:hidden">Close</button></div>
             <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {[['Monthly Rent', selectedBill.rent_amount], ['Electricity', selectedBill.electricity_amount], ['AC Charges', selectedBill.ac_amount], ['Other Charges', selectedBill.other_amount], ['Discount', -selectedBill.discount_amount], ['Total', selectedBill.total_amount], ['Verified Paid', selectedBill.paid_amount], ['Outstanding', selectedBill.balance_amount]].map(([label, value]) => <article key={String(label)} className="rounded-2xl bg-slate-50 p-4"><p className="text-xs font-semibold uppercase text-slate-500">{label}</p><p className="mt-2 font-bold">{money(value)}</p></article>)}
             </div>

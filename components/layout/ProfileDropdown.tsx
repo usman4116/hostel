@@ -418,7 +418,7 @@ function ProfileModal({ initialTab, profile, authEmail, avatarUrl, onClose, onUp
 
           {tab === "account" && (
             <form onSubmit={saveProfile} className="space-y-5">
-              <div className="flex items-center gap-4"><Avatar name={form.fullName || name} email={email} avatarUrl={form.avatarUrl} size="large" /><div><h3 className="font-bold text-slate-900 dark:text-white">Personal information</h3><p className="mt-1 text-sm text-slate-500 dark:text-slate-300">Changes appear in your admin menu.</p></div></div>
+              <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center"><Avatar name={form.fullName || name} email={email} avatarUrl={form.avatarUrl} size="large" /><div><h3 className="font-bold text-slate-900 dark:text-white">Personal information</h3><p className="mt-1 text-sm text-slate-500 dark:text-slate-300">Changes appear in your admin menu.</p></div></div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Full name"><input required value={form.fullName} onChange={(event) => setForm((current) => ({ ...current, fullName: event.target.value }))} className={inputClass} /></Field>
                 <Field label="Email"><input readOnly value={email} className={inputClass} /><span className="mt-1.5 block text-xs text-slate-500">Email is controlled by Supabase Auth.</span></Field>
@@ -438,7 +438,7 @@ function ProfileModal({ initialTab, profile, authEmail, avatarUrl, onClose, onUp
                 <Field label="New password"><input required minLength={8} type="password" autoComplete="new-password" value={password.next} onChange={(event) => setPassword((current) => ({ ...current, next: event.target.value }))} className={inputClass} /><span className="mt-1.5 block text-xs text-slate-500">Use at least 8 characters.</span></Field>
                 <Field label="Confirm new password"><input required minLength={8} type="password" autoComplete="new-password" value={password.confirm} onChange={(event) => setPassword((current) => ({ ...current, confirm: event.target.value }))} className={inputClass} /></Field>
               </div>
-              <div className="flex justify-end border-t border-slate-200 pt-5 dark:border-slate-700"><button type="submit" disabled={changingPassword} className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-wait disabled:opacity-60">{changingPassword ? "Changing password..." : "Change password"}</button></div>
+              <div className="flex justify-end border-t border-slate-200 pt-5 dark:border-slate-700"><button type="submit" disabled={changingPassword} className="w-full rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-wait disabled:opacity-60 sm:w-auto">{changingPassword ? "Changing password..." : "Change password"}</button></div>
             </form>
           )}
 

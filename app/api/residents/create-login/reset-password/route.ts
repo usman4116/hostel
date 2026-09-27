@@ -2,6 +2,7 @@ import { normalizeIdentityEmail } from "@/lib/identity";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type User } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { sendResidentCredentialsEmail } from "@/lib/email/residentCredentialsEmail";
 
 const ALLOWED_STAFF_ROLES = new Set([
   "super admin",
@@ -9,6 +10,20 @@ const ALLOWED_STAFF_ROLES = new Set([
   "manager",
   "reception",
 ]);
+
+function portalLoginUrl(request: NextRequest) {
+  const configured = String(
+    process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || "",
+  )
+    .trim()
+    .replace(/\/$/, "");
+  if (configured) return `${configured}/login`;
+  try {
+    return `${new URL(request.url).origin}/login`;
+  } catch {
+    return "http://localhost:3000/login";
+  }
+}
 
 function createTemporaryPassword() {
   const alphabet =
@@ -178,8 +193,22 @@ export async function POST(request: NextRequest) {
       return jsonError("The resident portal password could not be reset.", 500);
     }
 
+    const emailDispatch = await sendResidentCredentialsEmail({
+      residentName: String(resident.full_name ?? "Resident"),
+      email,
+      temporaryPassword,
+      portalLoginUrl: portalLoginUrl(request),
+      isReset: true,
+    });
+
     return NextResponse.json(
-      { email, temporaryPassword },
+      {
+        email,
+        temporaryPassword,
+        emailSent: emailDispatch.sent,
+        emailProvider: emailDispatch.provider,
+        emailError: emailDispatch.error,
+      },
       { headers: { "Cache-Control": "private, no-store" } },
     );
   } catch {

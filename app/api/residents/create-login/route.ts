@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { sendResidentCredentialsEmail } from "@/lib/email/residentCredentialsEmail";
 
 const ALLOWED_STAFF_ROLES = new Set([
   "super admin",
@@ -7,6 +8,20 @@ const ALLOWED_STAFF_ROLES = new Set([
   "manager",
   "reception",
 ]);
+
+function portalLoginUrl(request: NextRequest) {
+  const configured = String(
+    process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || "",
+  )
+    .trim()
+    .replace(/\/$/, "");
+  if (configured) return `${configured}/login`;
+  try {
+    return `${new URL(request.url).origin}/login`;
+  } catch {
+    return "http://localhost:3000/login";
+  }
+}
 
 function createTemporaryPassword() {
   const alphabet =
@@ -244,10 +259,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const emailDispatch = await sendResidentCredentialsEmail({
+      residentName: String(resident.full_name ?? "Resident"),
+      email,
+      temporaryPassword,
+      portalLoginUrl: portalLoginUrl(request),
+    });
+
     return NextResponse.json({
       created: true,
       email,
       temporaryPassword,
+      emailSent: emailDispatch.sent,
+      emailProvider: emailDispatch.provider,
+      emailError: emailDispatch.error,
     });
   } catch (error) {
     console.error("[resident-login] Unexpected portal account creation failure.", error);

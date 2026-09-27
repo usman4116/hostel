@@ -1,6 +1,7 @@
 import "server-only";
 
 import { Resend } from "resend";
+import { gmailSenderConfigured, sendGmailEmail } from "@/lib/email/gmailClient";
 
 export type EmailDispatchStatus =
   | "sent"
@@ -36,7 +37,8 @@ function resendClient(apiKey: string) {
 
 export function emailSenderConfigured() {
   return Boolean(
-    text(process.env.RESEND_API_KEY) && text(process.env.NOTIFICATION_EMAIL_FROM),
+    (text(process.env.RESEND_API_KEY) && text(process.env.NOTIFICATION_EMAIL_FROM)) ||
+      gmailSenderConfigured(),
   );
 }
 
@@ -46,7 +48,7 @@ export function emailFromAddress() {
   return fromAddress ? `${fromName} <${fromAddress}>` : "";
 }
 
-/** Sends one transactional email through the Resend SDK. Never throws. */
+/** Sends one transactional email through the Resend SDK, with automatic fallback to Gmail SMTP if Resend sandbox rejects the recipient. Never throws. */
 export async function sendTransactionalEmail(
   request: EmailRequest,
 ): Promise<EmailDispatchResult> {
@@ -57,7 +59,10 @@ export async function sendTransactionalEmail(
 
   const apiKey = text(process.env.RESEND_API_KEY);
   const from = emailFromAddress();
-  if (!apiKey || !from) {
+  const resendConfigured = Boolean(apiKey && from);
+  const gmailConfigured = gmailSenderConfigured();
+
+  if (!resendConfigured && !gmailConfigured) {
     return {
       status: "configuration_required",
       providerMessageId: null,
@@ -65,37 +70,74 @@ export async function sendTransactionalEmail(
     };
   }
 
-  try {
-    const { data, error } = await resendClient(apiKey).emails.send(
-      {
-        from,
-        to: [recipient],
-        subject: request.subject,
-        html: request.html,
-        text: request.text,
-      },
-      request.idempotencyKey ? { idempotencyKey: request.idempotencyKey } : undefined,
-    );
+  let resendError: string | null = null;
 
-    if (error) {
+  if (resendConfigured) {
+    try {
+      const { data, error } = await resendClient(apiKey).emails.send(
+        {
+          from,
+          to: [recipient],
+          subject: request.subject,
+          html: request.html,
+          text: request.text,
+        },
+        request.idempotencyKey ? { idempotencyKey: request.idempotencyKey } : undefined,
+      );
+
+      if (!error) {
+        return { status: "sent", providerMessageId: text(data?.id) || null, error: null };
+      }
+
+      resendError = text(error.message) || "resend_send_failed";
       console.warn("[email] Resend rejected the message.", {
         name: error.name,
         message: error.message,
       });
+    } catch (caught) {
+      resendError =
+        caught instanceof Error && caught.message.trim()
+          ? caught.message
+          : "resend_send_failed";
+      console.warn("[email] Resend request failed.", { message: resendError });
+    }
+  }
+
+  if (gmailConfigured) {
+    try {
+      const gmailResult = await sendGmailEmail({
+        to: recipient,
+        subject: request.subject,
+        text: request.text,
+        html: request.html,
+      });
+      console.info("[email] Delivered via Gmail SMTP fallback.", {
+        to: recipient,
+        messageId: gmailResult.messageId,
+      });
+      return {
+        status: "sent",
+        providerMessageId: gmailResult.messageId,
+        error: null,
+      };
+    } catch (gmailCaught) {
+      const gmailMessage =
+        gmailCaught instanceof Error && gmailCaught.message.trim()
+          ? gmailCaught.message
+          : "gmail_send_failed";
+      console.warn("[email] Gmail fallback failed.", { message: gmailMessage });
       return {
         status: "failed",
         providerMessageId: null,
-        error: text(error.message) || "resend_send_failed",
+        error: resendError || gmailMessage,
       };
     }
-
-    return { status: "sent", providerMessageId: text(data?.id) || null, error: null };
-  } catch (caught) {
-    const message =
-      caught instanceof Error && caught.message.trim()
-        ? caught.message
-        : "resend_send_failed";
-    console.warn("[email] Resend request failed.", { message });
-    return { status: "failed", providerMessageId: null, error: message };
   }
+
+  return {
+    status: "failed",
+    providerMessageId: null,
+    error: resendError || "resend_send_failed",
+  };
 }
+

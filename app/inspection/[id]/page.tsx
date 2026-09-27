@@ -139,16 +139,16 @@ export default function InspectionDetailPage() {
 
   return <main className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8">
     <div className="mx-auto max-w-6xl space-y-6">
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div><p className="text-sm font-semibold uppercase tracking-[0.2em] text-indigo-600">University Girls Hostel Inspection Report</p><h1 className="mt-2 text-3xl font-bold">{inspection.inspection_number || "Inspection"}</h1><p className="mt-2 text-sm text-slate-500">Permanent inspection history for the linked admission.</p></div>
-          <div className="flex gap-2 print:hidden"><button type="button" onClick={() => window.print()} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">Print</button><Link href="/inspection" className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold">Back</Link></div>
+          <div><p className="text-sm font-semibold uppercase tracking-[0.2em] text-indigo-600">University Girls Hostel Inspection Report</p><h1 className="mt-2 text-2xl font-bold sm:text-3xl">{inspection.inspection_number || "Inspection"}</h1><p className="mt-2 text-sm text-slate-500">Permanent inspection history for the linked admission.</p></div>
+          <div className="flex flex-wrap gap-2 print:hidden"><button type="button" onClick={() => window.print()} className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">Print</button><Link href="/inspection" className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold">Back</Link></div>
         </div>
       </section>
 
       {error && <section className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error}</section>}
 
-      <section className="grid gap-3 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2 sm:p-6 lg:grid-cols-4">
         <Info label="Resident" value={display(resident, ["full_name"])}/>
         <Info label="Admission" value={display(admission, ["admission_number", "id"])}/>
         <Info label="Room" value={display(room, ["room_number"])}/>
@@ -174,14 +174,14 @@ export default function InspectionDetailPage() {
         <Info label="Actual Damage Cost" value={`Rs ${Number(inspection.actual_damage_cost || 0).toLocaleString()}`}/>
       </section>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
         <h2 className="text-xl font-bold">Admission Inspection History</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           {history.map((item) => <Link key={item.id} href={`/inspection/${item.id}`} className={`rounded-2xl border p-4 transition hover:border-indigo-300 ${item.id === inspection.id ? "border-indigo-300 bg-indigo-50" : "border-slate-200"}`}><div className="flex items-start justify-between gap-3"><div><p className="font-bold">{item.inspection_type || "Inspection"}</p><p className="mt-1 text-sm text-slate-500">{item.inspection_date} · {item.inspection_number || item.id}</p></div><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">{item.status || "Completed"}</span></div><p className={`mt-3 text-sm font-semibold ${item.damage_found ? "text-red-700" : "text-emerald-700"}`}>{item.damage_found ? `Damage found · Est. Rs ${Number(item.estimated_damage_cost || 0).toLocaleString()} · Actual Rs ${Number(item.actual_damage_cost || 0).toLocaleString()}` : "No damage recorded"}</p></Link>)}
         </div>
       </section>
 
-      {galleries.map((gallery) => <section key={gallery.title} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><h2 className="text-xl font-bold">{gallery.title}</h2>{gallery.urls.length === 0 ? <p className="mt-3 text-sm text-slate-500">No photos recorded.</p> : <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">{gallery.urls.map((url, index) => <a key={`${url}-${index}`} href={url} target="_blank" rel="noreferrer" className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50"><img src={url} alt={`${gallery.title} ${index + 1}`} className="h-48 w-full object-cover"/><p className="p-3 text-xs font-semibold text-slate-600">Photo {index + 1} · Open full size</p></a>)}</div>}</section>)}
+      {galleries.map((gallery) => <section key={gallery.title} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6"><h2 className="text-xl font-bold">{gallery.title}</h2>{gallery.urls.length === 0 ? <p className="mt-3 text-sm text-slate-500">No photos recorded.</p> : <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">{gallery.urls.map((url, index) => <a key={`${url}-${index}`} href={url} target="_blank" rel="noreferrer" className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50"><img src={url} alt={`${gallery.title} ${index + 1}`} className="h-48 w-full object-cover"/><p className="p-3 text-xs font-semibold text-slate-600">Photo {index + 1} · Open full size</p></a>)}</div>}</section>)}
     </div>
   </main>;
 }

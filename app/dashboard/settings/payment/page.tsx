@@ -31,13 +31,13 @@ export default function PaymentSettingsPage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 p-6">
+    <main className="min-h-screen bg-slate-50 p-4 sm:p-6">
 
       <div className="mx-auto max-w-5xl space-y-6">
 
-        <div className="rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 p-8 text-white shadow-xl">
+        <div className="rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 p-5 sm:p-8 text-white shadow-xl">
 
-          <h1 className="text-3xl font-bold">
+          <h1 className="text-2xl sm:text-3xl font-bold">
             Payment Settings
           </h1>
 
@@ -50,7 +50,7 @@ export default function PaymentSettingsPage() {
 
         <form
           onSubmit={handleSubmit}
-          className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm"
+          className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-8 shadow-sm"
         >
 
           <div className="grid gap-6 md:grid-cols-2">
@@ -299,11 +299,11 @@ export default function PaymentSettingsPage() {
               resident portal.
             </p>
 
-            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-6">
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-6">
 
               <div className="space-y-4">
 
-                <div className="flex justify-between border-b border-slate-200 pb-3">
+                <div className="flex flex-wrap justify-between gap-2 border-b border-slate-200 pb-3">
                   <span className="font-medium text-slate-600">
                     Payment Method
                   </span>
@@ -313,7 +313,7 @@ export default function PaymentSettingsPage() {
                   </span>
                 </div>
 
-                <div className="flex justify-between border-b border-slate-200 pb-3">
+                <div className="flex flex-wrap justify-between gap-2 border-b border-slate-200 pb-3">
                   <span className="font-medium text-slate-600">
                     Account Title
                   </span>
@@ -323,7 +323,7 @@ export default function PaymentSettingsPage() {
                   </span>
                 </div>
 
-                <div className="flex justify-between border-b border-slate-200 pb-3">
+                <div className="flex flex-wrap justify-between gap-2 border-b border-slate-200 pb-3">
                   <span className="font-medium text-slate-600">
                     Account Number
                   </span>
@@ -332,7 +332,7 @@ export default function PaymentSettingsPage() {
                     {form.accountNumber || "-"}
                   </span>
                 </div>
-                <div className="flex justify-between border-b border-slate-200 pb-3">
+                <div className="flex flex-wrap justify-between gap-2 border-b border-slate-200 pb-3">
                   <span className="font-medium text-slate-600">
                     Bank Name
                   </span>
@@ -342,7 +342,7 @@ export default function PaymentSettingsPage() {
                   </span>
                 </div>
 
-                <div className="flex justify-between border-b border-slate-200 pb-3">
+                <div className="flex flex-wrap justify-between gap-2 border-b border-slate-200 pb-3">
                   <span className="font-medium text-slate-600">
                     IBAN
                   </span>
@@ -368,7 +368,7 @@ export default function PaymentSettingsPage() {
 
           </div>
 
-          <div className="mt-10 rounded-2xl border border-blue-200 bg-blue-50 p-6">
+          <div className="mt-10 rounded-2xl border border-blue-200 bg-blue-50 p-4 sm:p-6">
 
             <h2 className="text-lg font-bold text-blue-900">
               Important Notice
@@ -395,7 +395,7 @@ export default function PaymentSettingsPage() {
 
           </div>
 
-          <div className="mt-10 flex items-center justify-end gap-4">
+          <div className="mt-10 flex flex-wrap items-center justify-end gap-4">
 
             <button
               type="button"

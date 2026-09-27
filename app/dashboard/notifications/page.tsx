@@ -45,10 +45,10 @@ export default function NotificationsPage() {
   }), [logs]);
 
   return (
-    <main className="min-h-screen bg-slate-50 p-6">
+    <main className="min-h-screen bg-slate-50 p-4 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        <section className="flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500 p-8 text-white shadow-xl">
-          <div><h1 className="text-3xl font-bold">Notification Logs</h1><p className="mt-2 text-blue-100">Email, WhatsApp, and SMS delivery tracking by resident.</p></div>
+        <section className="flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500 p-5 sm:p-8 text-white shadow-xl">
+          <div><h1 className="text-2xl sm:text-3xl font-bold">Notification Logs</h1><p className="mt-2 text-blue-100">Email, WhatsApp, and SMS delivery tracking by resident.</p></div>
           <button type="button" onClick={() => void loadLogs()} className="rounded-xl bg-white/15 px-5 py-3 text-sm font-semibold hover:bg-white/25">Refresh</button>
         </section>
         <section className="grid gap-4 sm:grid-cols-3">

@@ -59,9 +59,9 @@ export default function AddStaffPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow">
-        <h1 className="text-3xl font-bold mb-6">Add Staff</h1>
+    <div className="p-4 sm:p-6">
+      <div className="max-w-3xl mx-auto bg-white p-4 sm:p-6 rounded-lg shadow">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-6">Add Staff</h1>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -193,7 +193,7 @@ export default function AddStaffPage() {
             />
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <button
               type="submit"
               disabled={loading}

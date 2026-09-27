@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useMemo } from "react";
 import {
@@ -68,7 +68,7 @@ export default function DashboardCharts({ data }: { data: DashboardData }) {
 
   return (
     <div className="mt-10 grid gap-6 lg:grid-cols-2">
-      <section className="rounded-2xl bg-white p-6 text-slate-950 shadow-lg dark:bg-slate-800 dark:text-slate-100">
+      <section className="rounded-2xl bg-white p-4 text-slate-950 shadow-lg sm:p-6 dark:bg-slate-800 dark:text-slate-100">
         <h3 className="mb-6 text-xl font-bold">Revenue (Last 6 Months)</h3>
         <div className="h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%">
@@ -93,7 +93,7 @@ export default function DashboardCharts({ data }: { data: DashboardData }) {
         </div>
       </section>
 
-      <section className="rounded-2xl bg-white p-6 text-slate-950 shadow-lg dark:bg-slate-800 dark:text-slate-100">
+      <section className="rounded-2xl bg-white p-4 text-slate-950 shadow-lg sm:p-6 dark:bg-slate-800 dark:text-slate-100">
         <h3 className="mb-6 text-xl font-bold">Bed Occupancy</h3>
         <div className="flex h-[300px] w-full items-center justify-center">
           <ResponsiveContainer width="100%" height="100%">
